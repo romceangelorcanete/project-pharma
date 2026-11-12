@@ -1,16 +1,21 @@
-# React + Vite
+# JVGH Pharmacy
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/Vite frontend with a PHP session-authentication API for local XAMPP development.
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Start Apache and MySQL in XAMPP.
+2. In phpMyAdmin, import `API/schema.sql`. It creates the `pharma_inventory` database and the `users`, `roles`, and `user_roles` tables, with `admin` and `pharmacist` roles.
+3. Configure MySQL in `API/config.local.php`. This local-only file is ignored by Git; `API/config.example.php` shows the expected settings. The checked-in example uses the standard XAMPP `root` account with an empty password, which is only suitable for a local development machine.
+4. Run `npm run dev`. It starts the PHP API and Vite together in one terminal. XAMPP MySQL remains the database server; Apache is only needed for phpMyAdmin.
 
-## React Compiler
+Create user accounts from a local terminal after importing the schema:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+.\API\create_user.ps1 -Username admin1 -FullName "Admin Name" -Role admin
+.\API\create_user.ps1 -Username pharmacist1 -FullName "Pharmacist Name" -Role pharmacist
+```
 
-## Expanding the Oxlint configuration
+The script securely prompts for each password and stores only a PHP password hash. There are no default login accounts.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+This first step implements login, logout, session checks, and role recognition. Inventory pages and user-management screens are not implemented yet; use `api_require_roles()` in protected PHP endpoints as those features are added.
