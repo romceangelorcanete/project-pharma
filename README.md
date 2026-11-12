@@ -38,6 +38,8 @@ Run these commands once per account from the project directory. Replace the samp
 .\API\create_user.ps1 -Username "your_pharmacist" -FullName "Pharmacist Name" -Role pharmacist
 ```
 
+password - Annie0123!
+
 The script securely prompts for the password twice. It must be at least 8 characters; there is no configured maximum in the account-creation script. Passwords are stored as PHP `PASSWORD_DEFAULT` hashes, not as readable text. A hash shown in phpMyAdmin cannot be converted back to the original password. Do not put passwords in this README or other project files.
 
 The schema does not create default login accounts, and there is no password-reset screen or command yet. Do not edit `password_hash` directly in phpMyAdmin.
