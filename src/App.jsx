@@ -25,6 +25,88 @@ function roleTitle(role) {
   return role === 'admin' ? 'Admin' : role === 'pharmacist' ? 'Pharmacist' : role
 }
 
+const sampleInventory = [
+  { name: 'Amoxicillin 500 mg', category: 'Antibiotic', stock: 18, unit: 'boxes', status: 'Low stock' },
+  { name: 'Paracetamol 500 mg', category: 'Analgesic', stock: 42, unit: 'boxes', status: 'Reorder soon' },
+  { name: 'Cetirizine 10 mg', category: 'Antihistamine', stock: 9, unit: 'boxes', status: 'Low stock' },
+  { name: 'Omeprazole 20 mg', category: 'Gastrointestinal', stock: 64, unit: 'boxes', status: 'In stock' },
+]
+
+const sampleActivity = [
+  { action: 'Stock received', item: 'Paracetamol 500 mg', detail: 'Added 24 boxes', time: 'Today, 9:42 AM', mark: '+' },
+  { action: 'Low stock alert', item: 'Cetirizine 10 mg', detail: '9 boxes remaining', time: 'Today, 8:15 AM', mark: '!' },
+  { action: 'Stock issued', item: 'Omeprazole 20 mg', detail: 'Issued 6 boxes', time: 'Yesterday, 4:30 PM', mark: '−' },
+]
+
+function AdminDashboard({ user, onLogout, submitting }) {
+  return (
+    <main className="dashboard-shell">
+      <aside className="dashboard-sidebar">
+        <a className="brand dashboard-brand" href="/" aria-label="JVGH Pharmacy home">
+          <span className="brand-mark" aria-hidden="true">+</span>
+          <span>JVGH <strong>PHARMACY</strong></span>
+        </a>
+        <p className="sidebar-caption">WORKSPACE</p>
+        <nav className="sidebar-nav" aria-label="Admin navigation">
+          <a className="sidebar-link active" href="#overview"><span>▦</span> Overview</a>
+          <a className="sidebar-link" href="#inventory"><span>▤</span> Inventory <small>Sample</small></a>
+          <a className="sidebar-link" href="#activity"><span>↻</span> Stock movements <small>Sample</small></a>
+          <a className="sidebar-link" href="#team"><span>♙</span> User management <small>Sample</small></a>
+          <a className="sidebar-link" href="#reports"><span>▥</span> Reports <small>Sample</small></a>
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-user-mark">{user.fullName?.charAt(0)?.toUpperCase() || 'A'}</div>
+          <div className="sidebar-user-info"><strong>{user.fullName}</strong><span>Administrator</span></div>
+          <button className="sidebar-logout" type="button" onClick={onLogout} disabled={submitting} aria-label="Sign out">↗</button>
+        </div>
+      </aside>
+
+      <section className="dashboard-main" id="overview">
+        <header className="dashboard-header">
+          <div><p className="eyebrow">PHARMACY INVENTORY SYSTEM</p><h1>Dashboard</h1></div>
+          <div className="dashboard-header-actions"><span className="sample-indicator"><i /> Sample data</span><button className="text-button" type="button" onClick={onLogout} disabled={submitting}>{submitting ? 'Signing out…' : 'Sign out'}</button></div>
+        </header>
+
+        <div className="dashboard-welcome"><div><h2>Good day, {user.fullName?.split(' ')[0] || 'Admin'}</h2><p>Here’s what’s happening with your pharmacy today.</p></div><span className="dashboard-date">JVGH PHARMACY · ADMIN</span></div>
+
+        <section className="metric-grid" aria-label="Sample inventory summary">
+          <article className="metric-card"><div className="metric-label">TOTAL MEDICINES <span className="metric-icon green">▤</span></div><strong>248</strong><p><span className="metric-positive">+12</span> this month</p></article>
+          <article className="metric-card"><div className="metric-label">LOW STOCK ITEMS <span className="metric-icon amber">!</span></div><strong>08</strong><p><span className="metric-warning">Needs attention</span></p></article>
+          <article className="metric-card"><div className="metric-label">EXPIRING SOON <span className="metric-icon blue">◷</span></div><strong>03</strong><p>Within the next 90 days</p></article>
+          <article className="metric-card"><div className="metric-label">STOCK MOVEMENTS <span className="metric-icon violet">↗</span></div><strong>36</strong><p>Recorded this month</p></article>
+        </section>
+
+        <div className="dashboard-content-grid">
+          <section className="dashboard-card inventory-card" id="inventory">
+            <div className="card-heading"><div><h2>Stock watch</h2><p>Items that may need a reorder</p></div><a href="#inventory">View inventory <span>→</span></a></div>
+            <div className="table-wrap"><table><thead><tr><th>MEDICINE</th><th>CATEGORY</th><th>ON HAND</th><th>STATUS</th></tr></thead><tbody>{sampleInventory.map((item) => <tr key={item.name}><td><strong>{item.name}</strong></td><td>{item.category}</td><td>{item.stock} {item.unit}</td><td><span className={`stock-status ${item.status === 'Low stock' ? 'status-low' : item.status === 'Reorder soon' ? 'status-soon' : 'status-ok'}`}><i />{item.status}</span></td></tr>)}</tbody></table></div>
+          </section>
+
+          <section className="dashboard-card movement-card" id="reports">
+            <div className="card-heading"><div><h2>Stock movement</h2><p>Sample activity this week</p></div><span className="period-chip">This week⌄</span></div>
+            <div className="chart-total"><strong>126</strong><span>items moved</span></div>
+            <div className="movement-chart" role="img" aria-label="Sample stock movement chart for Monday through Sunday">{[{d:'Mon',a:46,b:25},{d:'Tue',a:64,b:38},{d:'Wed',a:42,b:52},{d:'Thu',a:77,b:37},{d:'Fri',a:59,b:49},{d:'Sat',a:35,b:22},{d:'Sun',a:26,b:16}].map((day) => <div className="chart-day" key={day.d}><div className="chart-bars"><i style={{height:`${day.a}%`}}/><i style={{height:`${day.b}%`}}/></div><span>{day.d}</span></div>)}</div>
+            <div className="chart-legend"><span><i className="legend-in"/>Stock received</span><span><i className="legend-out"/>Stock issued</span></div>
+          </section>
+
+          <section className="dashboard-card activity-card" id="activity">
+            <div className="card-heading"><div><h2>Recent activity</h2><p>Latest sample stock updates</p></div><a href="#activity">View all <span>→</span></a></div>
+            <div className="activity-list">{sampleActivity.map((item) => <article className="activity-row" key={`${item.action}-${item.item}`}><span className={`activity-mark ${item.mark === '!' ? 'activity-alert' : ''}`}>{item.mark}</span><div className="activity-copy"><strong>{item.action}</strong><span>{item.item} · {item.detail}</span></div><time>{item.time}</time></article>)}</div>
+          </section>
+
+          <section className="dashboard-card team-card" id="team">
+            <div className="card-heading"><div><h2>Team access</h2><p>Sample workspace summary</p></div><span className="team-icon">♙</span></div>
+            <div className="team-total"><strong>06</strong><span>active staff accounts</span></div>
+            <div className="team-roles"><span>Admin <b>1</b></span><span>Pharmacist <b>5</b></span></div>
+            <a className="team-link" href="#team">Manage users <span>→</span></a>
+          </section>
+        </div>
+        <footer className="dashboard-footer">Dashboard preview · All inventory and activity figures shown are sample data.</footer>
+      </section>
+    </main>
+  )
+}
+
 export default function App() {
   const [auth, setAuth] = useState({ status: 'loading', user: null, csrfToken: '' })
   const [username, setUsername] = useState('')
@@ -118,6 +200,10 @@ export default function App() {
   if (auth.user) {
     const roles = auth.user.roles || []
     const isAdmin = roles.includes('admin')
+
+    if (isAdmin) {
+      return <AdminDashboard user={auth.user} onLogout={handleLogout} submitting={submitting} />
+    }
 
     return (
       <main className="page-shell">
