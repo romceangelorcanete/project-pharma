@@ -13,7 +13,7 @@ The development launcher uses `C:\Program Files\XAMPP\php\php.exe` by default. I
 ## Setup
 
 1. Start MySQL in the XAMPP Control Panel. Start Apache too if you will use phpMyAdmin.
-2. In phpMyAdmin, import `API/schema.sql` from the server-level Import page. It creates the `pharma_inventory` database and its `users`, `roles`, and `user_roles` tables, then seeds the `admin` and `pharmacist` roles.
+2. In phpMyAdmin, import `Database/schema.sql` from the server-level Import page. It creates the `pharma_inventory` database and the 13 tables in the pharmacy ERD, then seeds the `admin` and `pharmacist` roles. The schema uses `CREATE TABLE IF NOT EXISTS`, so importing it into the existing database adds missing tables without replacing existing tables or data.
 3. Create `API/config.local.php` from `API/config.example.php` and set your local MySQL credentials. This local-only file is ignored by Git. The example uses the standard XAMPP `root` account with an empty password; use that only on a local development machine.
 4. Install the JavaScript dependencies:
 
