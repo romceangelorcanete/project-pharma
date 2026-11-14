@@ -1,30 +1,7 @@
 import { useEffect, useState } from 'react'
+import UserManagement from './pages/UserManagement.jsx'
+import { requestJson, roleTitle } from './services/api.js'
 import './App.css'
-
-async function requestJson(url, options = {}) {
-  const response = await fetch(url, {
-    credentials: 'same-origin',
-    ...options,
-  })
-
-  let data
-  try {
-    data = await response.json()
-  } catch {
-    throw new Error('The server returned an invalid response.')
-  }
-
-  if (!response.ok) {
-    throw new Error(data.error || 'The request could not be completed.')
-  }
-
-  return data
-}
-
-function roleTitle(role) {
-  return role === 'admin' ? 'Admin' : role === 'pharmacist' ? 'Pharmacist' : role
-}
-
 const sampleRegularRows = [
   { no: 1, name: '0.9 Sodium Chloride, 50ml vial', unit: 'vial', price: '₱44.55', dpri: '₱59.88', category: 'SMALL VIALS', other: 'NONE', expiry: '04/2031', lot: '260418', beginning: 734, deliveries: [{ date: '7/2/2026', qty: 300, vendor: 'EUROMED' }], daily: { 3: 8, 4: 1 }, ending: 725, monthly: 9, weekly: [9, 0, 0, 0, 0] },
   { no: 9, name: 'Acetylcysteine 600mg tablet', unit: 'tablet', price: '₱23.00', dpri: '₱36.36', category: 'COUGH SUPPRESSANTS', other: '', expiry: '03/2029', lot: '2603085\n0495', beginning: 1661, deliveries: [{ date: '10/14/2026', qty: 50, vendor: 'OAK' }, { date: '10/23/2026', qty: 100, vendor: 'ICS' }], daily: { 1: 63, 2: 38, 3: 34, 5: 36 }, ending: 1490, monthly: 171, weekly: [135, 36, 0, 0, 0] },
@@ -33,6 +10,21 @@ const sampleRegularRows = [
 
 const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
 const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+const dashboardSectionKeys = ['overview', 'regular', 'donation', 'mhmap', 'monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation', 'user-management']
+
+function getSavedDashboardSection() {
+  try {
+    const savedSection = window.sessionStorage.getItem('pharma-dashboard-section')
+    return dashboardSectionKeys.includes(savedSection) ? savedSection : 'overview'
+  } catch {
+    return 'overview'
+  }
+}
+
+function getInitialSidebarOpen() {
+  return typeof window === 'undefined' ? true : window.innerWidth > 760
+}
+
 const sampleDonationRows = [
   { no: 1, name: 'Aciclovir 250mg vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 2, name: 'Amikacin 125mg/ml vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [{ date: '9/4/2026', qty: 68, vendor: 'PGH' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
@@ -96,40 +88,76 @@ function MonthlyStockCard({ rows, periodLabels, regular = false }) {
   )
 }
 
+
 const sampleActivity = [
   { action: 'Stock received', item: 'Paracetamol 500 mg', detail: 'Added 24 boxes', time: 'Today, 9:42 AM', mark: '+' },
   { action: 'Low stock alert', item: 'Cetirizine 10 mg', detail: '9 boxes remaining', time: 'Today, 8:15 AM', mark: '!' },
   { action: 'Stock issued', item: 'Omeprazole 20 mg', detail: 'Issued 6 boxes', time: 'Yesterday, 4:30 PM', mark: '−' },
 ]
 
-function AdminDashboard({ user, onLogout, submitting }) {
+function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
   const [stockMenuOpen, setStockMenuOpen] = useState(true)
-  const [activeSection, setActiveSection] = useState('overview')
-  const sectionTitle = activeSection === 'overview' ? 'Dashboard' : activeSection === 'regular' ? 'Regular inventory' : activeSection === 'donation' ? 'Donation inventory' : 'MHMAP inventory'
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
+  const [activeSection, setActiveSection] = useState(getSavedDashboardSection)
+
+  function navigateToSection(section) {
+    setActiveSection(section)
+    if (window.innerWidth <= 760) setSidebarOpen(false)
+  }
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('pharma-dashboard-section', activeSection)
+    } catch {
+      // Keep navigation usable when browser storage is unavailable.
+    }
+  }, [activeSection])
+
+  const sectionTitles = {
+    overview: 'Dashboard',
+    regular: 'Regular inventory',
+    donation: 'Donation inventory',
+    mhmap: 'MHMAP inventory',
+    'monthly-consumption': 'Monthly Consumption',
+    inventory: 'Inventory',
+    'rpci-regular': 'RPCI Regular',
+    'rpci-donation': 'RPCI Donation',
+    'user-management': 'User Management',
+  }
+  const sectionTitle = sectionTitles[activeSection] || 'Dashboard'
 
   return (
-    <main className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <a className="brand dashboard-brand" href="/" aria-label="JVGH Pharmacy home">
-          <span className="brand-mark" aria-hidden="true">+</span>
-          <span>JVGH <strong>PHARMACY</strong></span>
-        </a>
+    <main className={`dashboard-shell ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`dashboard-sidebar ${sidebarOpen ? 'is-open' : ''}`} id="admin-sidebar" aria-label="Workspace sidebar">
+        <div className="sidebar-brand-row">
+          <a className="brand dashboard-brand" href="/" aria-label="JVGH Pharmacy home">
+            <span className="brand-mark" aria-hidden="true">+</span>
+            <span>JVGH <strong>PHARMACY</strong></span>
+          </a>
+          <button className="sidebar-toggle" type="button" aria-label={sidebarOpen ? 'Collapse sidebar to icons' : 'Expand sidebar'} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen((open) => !open)}><span /><span /><span /></button>
+          <button className="sidebar-mobile-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>×</button>
+        </div>
         <p className="sidebar-caption">WORKSPACE</p>
         <nav className="sidebar-nav" aria-label="Admin navigation">
-          <button className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`} type="button" onClick={() => setActiveSection('overview')}><span>▦</span> Overview</button>
+          <button className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`} title="Overview" type="button" onClick={() => navigateToSection('overview')}><span className="sidebar-icon">▦</span><span className="sidebar-label">Overview</span></button>
           <div className={`sidebar-group ${stockMenuOpen ? 'is-open' : ''}`}>
             <button className="sidebar-link sidebar-parent" type="button" aria-expanded={stockMenuOpen} onClick={() => setStockMenuOpen((open) => !open)}>
-              <span>▤</span> E-STOCK <span className="sidebar-chevron" aria-hidden="true">⌄</span>
+              <span className="sidebar-icon">▤</span><span className="sidebar-label">E-STOCK</span><span className="sidebar-chevron" aria-hidden="true">⌄</span>
             </button>
             {stockMenuOpen && <div className="sidebar-submenu">
-              <button className={`sidebar-sublink ${activeSection === 'regular' ? 'active' : ''}`} type="button" onClick={() => setActiveSection('regular')}>Regular</button>
-              <button className={`sidebar-sublink ${activeSection === 'donation' ? 'active' : ''}`} type="button" onClick={() => setActiveSection('donation')}>Donation</button>
-              <button className={`sidebar-sublink ${activeSection === 'mhmap' ? 'active' : ''}`} type="button" onClick={() => setActiveSection('mhmap')}>MHMAP</button>
+              <button className={`sidebar-sublink ${activeSection === 'regular' ? 'active' : ''}`} title="Regular" type="button" onClick={() => navigateToSection('regular')}><span className="sidebar-submenu-icon">R</span><span className="sidebar-sublink-label">Regular</span></button>
+              <button className={`sidebar-sublink ${activeSection === 'donation' ? 'active' : ''}`} title="Donation" type="button" onClick={() => navigateToSection('donation')}><span className="sidebar-submenu-icon">D</span><span className="sidebar-sublink-label">Donation</span></button>
+              <button className={`sidebar-sublink ${activeSection === 'mhmap' ? 'active' : ''}`} title="MHMAP" type="button" onClick={() => navigateToSection('mhmap')}><span className="sidebar-submenu-icon">M</span><span className="sidebar-sublink-label">MHMAP</span></button>
             </div>}
           </div>
-          <a className="sidebar-link" href="#activity"><span>↻</span> Stock movements <small>Sample</small></a>
-          <a className="sidebar-link" href="#team"><span>♙</span> User management <small>Sample</small></a>
-          <a className="sidebar-link" href="#reports"><span>▥</span> Reports <small>Sample</small></a>
+          <button className={`sidebar-link ${activeSection === 'monthly-consumption' ? 'active' : ''}`} title="Monthly Consumption" type="button" onClick={() => navigateToSection('monthly-consumption')}><span className="sidebar-icon">▥</span><span className="sidebar-label">Monthly Consumption</span></button>
+          <button className={`sidebar-link ${activeSection === 'inventory' ? 'active' : ''}`} title="Inventory" type="button" onClick={() => navigateToSection('inventory')}><span className="sidebar-icon">▤</span><span className="sidebar-label">Inventory</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-regular' ? 'active' : ''}`} title="RPCI Regular" type="button" onClick={() => navigateToSection('rpci-regular')}><span className="sidebar-icon">▧</span><span className="sidebar-label">RPCI Regular</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-donation' ? 'active' : ''}`} title="RPCI Donation" type="button" onClick={() => navigateToSection('rpci-donation')}><span className="sidebar-icon">▧</span><span className="sidebar-label">RPCI Donation</span></button>
+          <button className={`sidebar-link ${activeSection === 'user-management' ? 'active' : ''}`} title="User Management" type="button" onClick={() => navigateToSection('user-management')}><span className="sidebar-icon">♙</span><span className="sidebar-label">User Management</span></button>
+          <a className="sidebar-link" title="Stock movements" href="#activity"><span className="sidebar-icon">↻</span><span className="sidebar-label">Stock movements</span><small>Sample</small></a>
+          <a className="sidebar-link" title="Reports" href="#reports"><span className="sidebar-icon">▥</span><span className="sidebar-label">Reports</span><small>Sample</small></a>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-user-mark">{user.fullName?.charAt(0)?.toUpperCase() || 'A'}</div>
@@ -140,7 +168,7 @@ function AdminDashboard({ user, onLogout, submitting }) {
 
       <section className="dashboard-main" id="overview">
         <header className="dashboard-header">
-          <div><p className="eyebrow">PHARMACY INVENTORY SYSTEM</p><h1>{sectionTitle}</h1></div>
+          <div className="dashboard-title-group"><div><p className="eyebrow">PHARMACY INVENTORY SYSTEM</p><h1>{sectionTitle}</h1></div></div>
           <div className="dashboard-header-actions"><span className="sample-indicator"><i /> Sample data</span><button className="text-button" type="button" onClick={onLogout} disabled={submitting}>{submitting ? 'Signing out…' : 'Sign out'}</button></div>
         </header>
 
@@ -201,6 +229,15 @@ function AdminDashboard({ user, onLogout, submitting }) {
             <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card · November 2026</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><button type="button" className="ledger-filter">November 2026 <span>⌄</span></button></div></div>
             <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
             <MonthlyStockCard rows={sampleMhmapRows} periodLabels={donationWeeklyRanges} />
+          </section>
+        </div>}
+
+        {activeSection === 'user-management' && <UserManagement csrfToken={csrfToken} />}
+
+        {['monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation'].includes(activeSection) && <div className="section-page-content">
+          <section className="dashboard-card estock-other-card">
+            <div className="card-heading"><div><span className="ledger-kicker">E-STOCK / SAMPLE VIEW</span><h2>{sectionTitle}</h2><p>UI preview</p></div><span className="section-pill">SAMPLE</span></div>
+            <p className="section-preview">{sectionTitle} page layout will appear here. This menu is connected to the sample navigation only for now.</p>
           </section>
         </div>}
       </section>
@@ -281,6 +318,11 @@ export default function App() {
         method: 'POST',
         headers: { 'X-CSRF-Token': auth.csrfToken },
       })
+      try {
+        window.sessionStorage.removeItem('pharma-dashboard-section')
+      } catch {
+        // Ignore storage cleanup failures during sign out.
+      }
       setAuth({ status: 'ready', user: null, csrfToken: result.csrfToken })
       setPassword('')
     } catch (requestError) {
@@ -303,7 +345,7 @@ export default function App() {
     const isAdmin = roles.includes('admin')
 
     if (isAdmin) {
-      return <AdminDashboard user={auth.user} onLogout={handleLogout} submitting={submitting} />
+      return <AdminDashboard user={auth.user} csrfToken={auth.csrfToken} onLogout={handleLogout} submitting={submitting} />
     }
 
     return (

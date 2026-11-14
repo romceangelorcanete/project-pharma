@@ -1,3 +1,3 @@
 <?php
 header("Content-Type: application/json");
-echo json_encode(["message" => "Gumagana ang PHP API!", "time" => date("c")]);
+echo json_encode(["message" => "Connection established with the PHP API!", "time" => date("c")]);

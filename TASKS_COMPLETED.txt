@@ -1,0 +1,37 @@
+JVGH PHARMACY INVENTORY SYSTEM - TASK UPDATE
+Updated: November 14, 2026
+
+COMPLETED
+
+Dashboard and navigation
+- Added the admin dashboard overview with summary cards, stock activity, recent activity, and team access panels.
+- Added the E-STOCK submenu for Regular, Donation, and MHMAP.
+- Added workspace navigation for Monthly Consumption, Inventory, RPCI Regular, RPCI Donation, and User Management.
+- Kept Overview separate from the inventory forms; selecting an E-STOCK submenu opens its own section.
+- Preserved the selected dashboard section across a page refresh.
+
+Inventory screens
+- Added Regular, Donation, and MHMAP monthly stock card screens based on the supplied spreadsheet references.
+- Kept the table layout horizontally scrollable so the many inventory columns remain usable.
+- Stock card rows and dashboard figures are currently sample data; the spreadsheet has not been imported into the database.
+
+User Management
+- Added the user list with ID, full name, username, role, status, creation date, and row actions.
+- Added Add, Edit, and Delete flows, including role and active status fields.
+- Connected user management to the existing PHP endpoints under API/users/ and the pharma_inventory database.
+- Kept the database schema unchanged.
+- Moved the user management UI and its styles into src/pages/UserManagement.jsx and src/pages/UserManagement.css.
+- Moved shared API request helpers into src/services/api.js; App.jsx imports the UserManagement component.
+
+Responsive sidebar
+- Added a hide/show toggle in the sidebar beside the JVGH Pharmacy logo.
+- Collapsed sidebar keeps an icon rail visible instead of disappearing.
+- On small screens, the expanded menu opens as a drawer; selecting a section returns to the icon rail.
+
+CURRENT NOTES
+- User accounts use the live PHP/database connection.
+- Inventory screens and overview metrics remain sample UI data.
+- No database schema changes or spreadsheet data imports were made as part of this work.
+
+VERIFICATION
+- `npm run build` completed successfully after the User Management component refactor.
