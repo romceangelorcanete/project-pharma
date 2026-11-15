@@ -12,6 +12,7 @@ Dashboard and navigation
 
 Inventory screens
 - Added Regular, Donation, and MHMAP monthly stock card screens based on the supplied spreadsheet references.
+- Added a Jan-Dec month/year picker to Regular, Donation, and MHMAP; all three sections share the selected month and update their table headings.
 - Kept the table layout horizontally scrollable so the many inventory columns remain usable.
 - Stock card rows and dashboard figures are currently sample data; the spreadsheet has not been imported into the database.
 
@@ -35,3 +36,10 @@ CURRENT NOTES
 
 VERIFICATION
 - `npm run build` completed successfully after the User Management component refactor.
+
+Donation and MHMAP page recovery - November 15, 2026
+- Fixed blank Donation and MHMAP screens by restoring the shared month label used by the dashboard.
+- Kept Donation and MHMAP as separate page components with their own CSS files, following the Regular page structure and shared stock-card styling.
+- Updated the requested backup TXT with the restored page and dashboard source, styles, and components; preserved the earlier backup content.
+- Confirmed `npm run build` completed successfully.
+- No database changes; Donation and MHMAP continue to use sample inventory data.

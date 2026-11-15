@@ -1,0 +1,1534 @@
+﻿LATEST UI BACKUP - 2026-11-15
+Restored Donation and MHMAP routes and page files; sample UI only. Database was not modified.
+
+===== src/pages/AdminDashboard.jsx =====
+import { useEffect, useState } from 'react'
+import UserManagement from './UserManagement.jsx'
+import RegularInventory from './RegularInventory.jsx'
+import DonationInventory from './DonationInventory.jsx'
+import MhmapInventory from './MhmapInventory.jsx'
+const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+const dashboardSectionKeys = ['overview', 'regular', 'donation', 'mhmap', 'monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation', 'user-management']
+
+function SidebarIcon({ name }) {
+  const shapes = {
+    overview: <><rect x="3.5" y="3.5" width="7" height="7" rx="1" /><rect x="13.5" y="3.5" width="7" height="7" rx="1" /><rect x="3.5" y="13.5" width="7" height="7" rx="1" /><rect x="13.5" y="13.5" width="7" height="7" rx="1" /></>,
+    estock: <><path d="m12 3 8.5 4.5L12 12 3.5 7.5 12 3Z" /><path d="M3.5 12 12 16.5l8.5-4.5M3.5 16.5 12 21l8.5-4.5M12 12v9" /></>,
+    monthly: <><path d="M4 19.5h16M6.5 16v-4m5 4V7m5 9v-6" /><path d="M4 4.5h16" /></>,
+    inventory: <><path d="m4 7 8-4 8 4v10l-8 4-8-4V7Z" /><path d="m4 7 8 4 8-4M12 11v10" /></>,
+    rpci: <><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" /><path d="M14 3.5v4h4M8.5 12h7M8.5 15.5h7" /></>,
+    users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.5a3.1 3.1 0 0 1 0 6M17 15a4.8 4.8 0 0 1 3.5 4.6" /></>,
+    movement: <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.7 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.3 15" /></>,
+    reports: <><path d="M4 20V10m5 10V4m5 16v-7m5 7V7" /><path d="M2.5 20.5h19" /></>,
+  }
+  return <svg className="sidebar-icon sidebar-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{shapes[name]}</svg>
+}
+
+function getSavedDashboardSection() {
+  try {
+    const hashSection = window.location.hash.slice(1)
+    if (dashboardSectionKeys.includes(hashSection)) return hashSection
+    if (['reports', 'activity', 'team'].includes(hashSection)) return 'overview'
+    const savedSection = window.sessionStorage.getItem('pharma-dashboard-section')
+    return dashboardSectionKeys.includes(savedSection) ? savedSection : 'overview'
+  } catch {
+    return 'overview'
+  }
+}
+
+function getInitialSidebarOpen() {
+  return typeof window === 'undefined' ? true : window.innerWidth > 760
+}
+
+const sampleActivity = [
+  { action: 'Stock received', item: 'Paracetamol 500 mg', detail: 'Added 24 boxes', time: 'Today, 9:42 AM', mark: '+' },
+  { action: 'Low stock alert', item: 'Cetirizine 10 mg', detail: '9 boxes remaining', time: 'Today, 8:15 AM', mark: '!' },
+  { action: 'Stock issued', item: 'Omeprazole 20 mg', detail: 'Issued 6 boxes', time: 'Yesterday, 4:30 PM', mark: 'âˆ’' },
+]
+
+export default function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
+  const [stockMenuOpen, setStockMenuOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
+  const [activeSection, setActiveSection] = useState(getSavedDashboardSection)
+  const [stockMonth, setStockMonth] = useState('2026-11')
+  const [stockYear, stockMonthNumber] = stockMonth.split('-').map(Number)
+  const stockMonthLabel = new Date(stockYear, stockMonthNumber - 1, 1)
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  function navigateToSection(section) {
+    setActiveSection(section)
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${section}`)
+    if (window.innerWidth <= 760) setSidebarOpen(false)
+  }
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('pharma-dashboard-section', activeSection)
+    } catch {
+      // Keep navigation usable when browser storage is unavailable.
+    }
+  }, [activeSection])
+
+  const sectionTitles = {
+    overview: 'Dashboard',
+    regular: 'Regular inventory',
+    donation: 'Donation inventory',
+    mhmap: 'MHMAP inventory',
+    'monthly-consumption': 'Monthly Consumption',
+    inventory: 'Inventory',
+    'rpci-regular': 'RPCI Regular',
+    'rpci-donation': 'RPCI Donation',
+    'user-management': 'User Management',
+  }
+  const sectionTitle = sectionTitles[activeSection] || 'Dashboard'
+
+  return (
+    <main className={`dashboard-shell ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`dashboard-sidebar ${sidebarOpen ? 'is-open' : ''}`} id="admin-sidebar" aria-label="Workspace sidebar">
+        <div className="sidebar-brand-row">
+          <a className="brand dashboard-brand" href="/" aria-label="JVGH Pharmacy home">
+            <span className="brand-mark" aria-hidden="true">+</span>
+            <span>JVGH <strong>PHARMACY</strong></span>
+          </a>
+          <button className="sidebar-toggle" type="button" aria-label={sidebarOpen ? 'Collapse sidebar to icons' : 'Expand sidebar'} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen((open) => !open)}><span /><span /><span /></button>
+          <button className="sidebar-mobile-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg></button>
+        </div>
+        <p className="sidebar-caption">WORKSPACE</p>
+        <nav className="sidebar-nav" aria-label="Admin navigation">
+          <button className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`} title="Overview" type="button" onClick={() => navigateToSection('overview')}><SidebarIcon name="overview" /><span className="sidebar-label">Overview</span></button>
+          <div className={`sidebar-group ${stockMenuOpen ? 'is-open' : ''}`}>
+            <button className="sidebar-link sidebar-parent" type="button" aria-expanded={stockMenuOpen} onClick={() => setStockMenuOpen((open) => !open)}>
+              <SidebarIcon name="estock" /><span className="sidebar-label">E-STOCK</span><svg className="sidebar-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5" /></svg>
+            </button>
+            {stockMenuOpen && <div className="sidebar-submenu">
+              <button className={`sidebar-sublink ${activeSection === 'regular' ? 'active' : ''}`} title="Regular" type="button" onClick={() => navigateToSection('regular')}><span className="sidebar-submenu-icon">R</span><span className="sidebar-sublink-label">Regular</span></button>
+              <button className={`sidebar-sublink ${activeSection === 'donation' ? 'active' : ''}`} title="Donation" type="button" onClick={() => navigateToSection('donation')}><span className="sidebar-submenu-icon">D</span><span className="sidebar-sublink-label">Donation</span></button>
+              <button className={`sidebar-sublink ${activeSection === 'mhmap' ? 'active' : ''}`} title="MHMAP" type="button" onClick={() => navigateToSection('mhmap')}><span className="sidebar-submenu-icon">M</span><span className="sidebar-sublink-label">MHMAP</span></button>
+            </div>}
+          </div>
+          <button className={`sidebar-link ${activeSection === 'monthly-consumption' ? 'active' : ''}`} title="Monthly Consumption" type="button" onClick={() => navigateToSection('monthly-consumption')}><SidebarIcon name="monthly" /><span className="sidebar-label">Monthly Consumption</span></button>
+          <button className={`sidebar-link ${activeSection === 'inventory' ? 'active' : ''}`} title="Inventory" type="button" onClick={() => navigateToSection('inventory')}><SidebarIcon name="inventory" /><span className="sidebar-label">Inventory</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-regular' ? 'active' : ''}`} title="RPCI Regular" type="button" onClick={() => navigateToSection('rpci-regular')}><SidebarIcon name="rpci" /><span className="sidebar-label">RPCI Regular</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-donation' ? 'active' : ''}`} title="RPCI Donation" type="button" onClick={() => navigateToSection('rpci-donation')}><SidebarIcon name="rpci" /><span className="sidebar-label">RPCI Donation</span></button>
+          <button className={`sidebar-link ${activeSection === 'user-management' ? 'active' : ''}`} title="User Management" type="button" onClick={() => navigateToSection('user-management')}><SidebarIcon name="users" /><span className="sidebar-label">User Management</span></button>
+          <button className="sidebar-link" title="Stock movements" type="button" onClick={() => navigateToSection('overview')}><SidebarIcon name="movement" /><span className="sidebar-label">Stock movements</span><small>Sample</small></button>
+          <button className="sidebar-link" title="Reports" type="button" onClick={() => navigateToSection('overview')}><SidebarIcon name="reports" /><span className="sidebar-label">Reports</span><small>Sample</small></button>
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-user-mark">{user.fullName?.charAt(0)?.toUpperCase() || 'A'}</div>
+          <div className="sidebar-user-info"><strong>{user.fullName}</strong><span>Administrator</span></div>
+          <button className="sidebar-logout" type="button" onClick={onLogout} disabled={submitting} aria-label="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
+        </div>
+      </aside>
+
+      <section className="dashboard-main" id="overview">
+        <header className="dashboard-header">
+          <div className="dashboard-title-group"><div><p className="eyebrow">PHARMACY INVENTORY SYSTEM</p><h1>{sectionTitle}</h1></div></div>
+          <div className="dashboard-header-actions"><span className="sample-indicator"><i /> Sample data</span><button className="text-button" type="button" onClick={onLogout} disabled={submitting}>{submitting ? 'Signing outâ€¦' : 'Sign out'}</button></div>
+        </header>
+
+        {activeSection === 'overview' && <>
+        <div className="dashboard-welcome"><div><h2>Good day, {user.fullName?.split(' ')[0] || 'Admin'}</h2><p>Hereâ€™s whatâ€™s happening with your pharmacy today.</p></div><span className="dashboard-date">JVGH PHARMACY Â· ADMIN</span></div>
+
+        <section className="metric-grid" aria-label="Sample inventory summary">
+          <article className="metric-card"><div className="metric-label">TOTAL MEDICINES <span className="metric-icon green">â–¤</span></div><strong>248</strong><p><span className="metric-positive">+12</span> this month</p></article>
+          <article className="metric-card"><div className="metric-label">LOW STOCK ITEMS <span className="metric-icon amber">!</span></div><strong>08</strong><p><span className="metric-warning">Needs attention</span></p></article>
+          <article className="metric-card"><div className="metric-label">EXPIRING SOON <span className="metric-icon blue">â—·</span></div><strong>03</strong><p>Within the next 90 days</p></article>
+          <article className="metric-card"><div className="metric-label">STOCK MOVEMENTS <span className="metric-icon violet">â†—</span></div><strong>36</strong><p>Recorded this month</p></article>
+        </section>
+
+        <div className="dashboard-content-grid">
+          <section className="dashboard-card movement-card" id="reports">
+            <div className="card-heading"><div><h2>Stock movement</h2><p>Sample activity this week</p></div><span className="period-chip">This weekâŒ„</span></div>
+            <div className="chart-total"><strong>126</strong><span>items moved</span></div>
+            <div className="movement-chart" role="img" aria-label="Sample stock movement chart for Monday through Sunday">{[{d:'Mon',a:46,b:25},{d:'Tue',a:64,b:38},{d:'Wed',a:42,b:52},{d:'Thu',a:77,b:37},{d:'Fri',a:59,b:49},{d:'Sat',a:35,b:22},{d:'Sun',a:26,b:16}].map((day) => <div className="chart-day" key={day.d}><div className="chart-bars"><i style={{height:`${day.a}%`}}/><i style={{height:`${day.b}%`}}/></div><span>{day.d}</span></div>)}</div>
+            <div className="chart-legend"><span><i className="legend-in"/>Stock received</span><span><i className="legend-out"/>Stock issued</span></div>
+          </section>
+
+          <section className="dashboard-card activity-card" id="activity">
+            <div className="card-heading"><div><h2>Recent activity</h2><p>Latest sample stock updates</p></div><a href="#activity">View all <span>â†’</span></a></div>
+            <div className="activity-list">{sampleActivity.map((item) => <article className="activity-row" key={`${item.action}-${item.item}`}><span className={`activity-mark ${item.mark === '!' ? 'activity-alert' : ''}`}>{item.mark}</span><div className="activity-copy"><strong>{item.action}</strong><span>{item.item} Â· {item.detail}</span></div><time>{item.time}</time></article>)}</div>
+          </section>
+
+          <section className="dashboard-card team-card" id="team">
+            <div className="card-heading"><div><h2>Team access</h2><p>Sample workspace summary</p></div><span className="team-icon">â™™</span></div>
+            <div className="team-total"><strong>06</strong><span>active staff accounts</span></div>
+            <div className="team-roles"><span>Admin <b>1</b></span><span>Pharmacist <b>5</b></span></div>
+            <a className="team-link" href="#team">Manage users <span>â†’</span></a>
+          </section>
+        </div>
+        <footer className="dashboard-footer">Dashboard preview Â· All inventory and activity figures shown are sample data.</footer>
+        </>}
+
+        {activeSection === 'regular' && <RegularInventory stockMonth={stockMonth} onStockMonthChange={setStockMonth} />}
+
+        {activeSection === 'donation' && <DonationInventory stockMonth={stockMonth} onStockMonthChange={setStockMonth} monthLabel={stockMonthLabel} />}
+
+        {activeSection === 'mhmap' && <MhmapInventory stockMonth={stockMonth} onStockMonthChange={setStockMonth} monthLabel={stockMonthLabel} />}
+
+        {activeSection === 'user-management' && <UserManagement csrfToken={csrfToken} />}
+
+        {['monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation'].includes(activeSection) && <div className="section-page-content">
+          <section className="dashboard-card estock-other-card">
+            <div className="card-heading"><div><span className="ledger-kicker">E-STOCK / SAMPLE VIEW</span><h2>{sectionTitle}</h2><p>UI preview</p></div><span className="section-pill">SAMPLE</span></div>
+            <p className="section-preview">{sectionTitle} page layout will appear here. This menu is connected to the sample navigation only for now.</p>
+          </section>
+        </div>}
+      </section>
+    </main>
+  )
+}
+
+
+
+===== src/pages/DonationInventory.jsx =====
+import MonthYearPicker from '../components/MonthYearPicker.jsx'
+import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
+import './DonationInventory.css'
+const sampleDonationRows = [
+  { no: 1, name: 'Aciclovir 250mg vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 2, name: 'Amikacin 125mg/ml vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [{ date: '9/4/2026', qty: 68, vendor: 'PGH' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 4, name: 'Amino Acid 7%', unit: 'bottle', category: 'Donation', expiry: '12/2026', lot: '2250117', beginning: 10, deliveries: [{ date: '10/14/2026', qty: 20, vendor: 'VMC' }], daily: { 1: 1, 3: 4, 4: 5 }, ending: 0, monthly: 10, weekly: [10, 0, 0, 0, 0] },
+  { no: 5, name: '5% Amino Acids in 5% Sorbitol', unit: 'bottle', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [], daily: { 4: 1 }, ending: -1, monthly: 1, weekly: [1, 0, 0, 0, 0] },
+  { no: 16, name: 'Azithromycin 500mg vial', unit: 'vial', category: 'Donation', expiry: '01/2027', lot: 'R45240151', beginning: 397, deliveries: [{ date: '7/16/2026', qty: 600, vendor: 'CONRADO' }], daily: { 1: 1, 4: 4 }, ending: 392, monthly: 5, weekly: [5, 0, 0, 0, 0] },
+]
+const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+
+export default function DonationInventory({ stockMonth, onStockMonthChange, monthLabel }) {
+  return (
+    <div className="section-page-content donation-inventory-page">
+      <section className="dashboard-card regular-ledger-card" id="donation">
+        <div className="ledger-heading">
+          <div><span className="ledger-kicker">E-STOCK / DONATION</span><h2>Donation inventory</h2><p>Monthly stock card Â· {monthLabel}</p></div>
+          <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
+        </div>
+        <div className="ledger-hint"><span>â†”</span> Swipe or scroll horizontally to view all stock-card columns</div>
+        <MonthlyStockCard rows={sampleDonationRows} periodLabels={donationWeeklyRanges} monthLabel={monthLabel} />
+      </section>
+    </div>
+  )
+}
+
+
+===== src/pages/DonationInventory.css =====
+.donation-inventory-page .ledger-kicker { color: #4d8965; }
+.donation-inventory-page .ledger-heading h2 { color: #263c31; }
+
+
+===== src/pages/MhmapInventory.jsx =====
+import MonthYearPicker from '../components/MonthYearPicker.jsx'
+import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
+import './MhmapInventory.css'
+const sampleMhmapRows = [
+  { no: 1, name: 'Carbamazepine 200mg tablet', expiry: '', lot: 'PH21-79\n20072773', beginning: 0, deliveries: [{ date: '7/10/2025', qty: 100, vendor: 'NO PAPERS' }, { date: '12/12/2025', qty: 100, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 2, name: 'Chlorpromazine HCl 200mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 3, name: 'Clozapine 100mg tablet', expiry: '2/1/2027', lot: 'B344K015', beginning: 0, deliveries: [{ date: '5/19/2025', qty: 100, vendor: '' }, { date: '11/30/2025', qty: 550, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 4, name: 'Diphenhydramine HCl 50mg/ml, 1ml ampule', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 5, name: 'Donepezil HCl 10mg tablet', expiry: '07/01/2027', lot: 'BZ01K010', beginning: 100, deliveries: [{ date: '12/15/2025', qty: 100, vendor: 'DOHCLCHD' }], daily: {}, ending: 100, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 6, name: 'Escitalopram oxalate 10mg tablet', expiry: '', lot: '', beginning: 73, deliveries: [], daily: {}, ending: 73, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 7, name: 'Fluoxetine 20mg capsule', expiry: '2/1/2027', lot: 'PH-2519', beginning: 0, deliveries: [{ date: '3/10/2026', qty: 150, vendor: 'DOHCLHD' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 8, name: 'Fluphenazine Decanoate 25mg/ml, 1ml amp', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 9, name: 'Haloperidol 5mg tablet', expiry: '11/30/2027', lot: 'CFB24004', beginning: 88, deliveries: [{ date: '7/15/2026', qty: 100, vendor: 'BPHO' }], daily: {}, ending: 88, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 10, name: 'Haloperidol 5mg/ml 1ml solution for injection ampule', expiry: '11/30/2027', lot: '243532', beginning: 3, deliveries: [{ date: '7/15/2026', qty: 3, vendor: 'BPHO' }], daily: {}, ending: 3, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 11, name: 'Lamotrigine 100mg tablet', expiry: '12/2028', lot: 'B662L006', beginning: 90, deliveries: [{ date: '12/15/2025', qty: 90, vendor: 'DOHCLCHD' }], daily: {}, ending: 90, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 12, name: 'Lithium Carbonate 450mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 13, name: 'Memantine HCl 10mg tablet', expiry: '05/31/2027', lot: 'BDMGL004\nHYT2402', beginning: 0, deliveries: [{ date: '12/15/2025', qty: 290, vendor: 'DOHCLCHD' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 14, name: 'Olanzapine HCl 10mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 15, name: 'Quetiapine fumarate 200mg tablet', expiry: '9/1/2026', lot: 'BUX2303', beginning: 0, deliveries: [{ date: '6/5/2026', qty: 300, vendor: 'NCMH' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 16, name: 'Risperidone 2mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 17, name: 'Sertraline 50mg tablet', expiry: '10/2026', lot: '', beginning: 0, deliveries: [{ date: '7/15/2026', qty: 631, vendor: 'BPHO' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 18, name: 'Valproic acid 250mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 19, name: 'Valproic acid 500mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 20, name: 'Valproic acid 250mg/5ml syrup, 120ml bottle', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+]
+
+const mhmapWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+
+export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLabel }) {
+  return (
+    <div className="section-page-content mhmap-inventory-page">
+      <section className="dashboard-card regular-ledger-card" id="mhmap">
+        <div className="ledger-heading">
+          <div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card Â· {monthLabel}</p></div>
+          <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
+        </div>
+        <div className="ledger-hint"><span>â†”</span> Swipe or scroll horizontally to view all stock-card columns</div>
+        <MonthlyStockCard rows={sampleMhmapRows} periodLabels={mhmapWeeklyRanges} monthLabel={monthLabel} />
+      </section>
+    </div>
+  )
+}
+
+
+===== src/pages/MhmapInventory.css =====
+.mhmap-inventory-page .ledger-kicker { color: #4d8965; }
+.mhmap-inventory-page .ledger-heading h2 { color: #263c31; }
+
+
+===== src/pages/RegularInventory.jsx =====
+import { useState } from 'react'
+import MonthYearPicker from '../components/MonthYearPicker.jsx'
+import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
+import './RegularInventory.css'
+const sampleRegularRows = [
+  { no: 1, name: '0.9 Sodium Chloride, 50ml vial', unit: 'vial', price: 'â‚±44.55', dpri: 'â‚±59.88', category: 'SMALL VIALS', other: 'NONE', expiry: '04/2031', lot: '260418', beginning: 734, deliveries: [{ date: '7/2/2026', qty: 300, vendor: 'EUROMED' }], daily: { 3: 8, 4: 1 }, ending: 725, monthly: 9, weekly: [9, 0, 0, 0, 0] },
+  { no: 9, name: 'Acetylcysteine 600mg tablet', unit: 'tablet', price: 'â‚±23.00', dpri: 'â‚±36.36', category: 'COUGH SUPPRESSANTS', other: '', expiry: '03/2029', lot: '2603085\n0495', beginning: 1661, deliveries: [{ date: '10/14/2026', qty: 50, vendor: 'OAK' }, { date: '10/23/2026', qty: 100, vendor: 'ICS' }], daily: { 1: 63, 2: 38, 3: 34, 5: 36 }, ending: 1490, monthly: 171, weekly: [135, 36, 0, 0, 0] },
+  { no: 14, name: 'Albendazole 400mg tablet', unit: 'tablet', price: 'â‚±7.00', dpri: 'â‚±8.00', category: 'ANTI-BIOTICS / MICROBIALS', other: '', expiry: '02/2028\n10/2027', lot: 'XT6C022\nXT5K007', beginning: 294, deliveries: [{ date: '4/28/2026', qty: 200, vendor: 'DYNA' }, { date: '5/5/2026', qty: 100, vendor: 'OAK' }], daily: {}, ending: 294, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+]
+
+
+const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
+
+export default function RegularInventory({ stockMonth, onStockMonthChange }) {
+  const [search, setSearch] = useState('')
+  const [unitFilter, setUnitFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [sort, setSort] = useState('default')
+  const [year, monthNumber] = stockMonth.split('-').map(Number)
+  const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const units = [...new Set(sampleRegularRows.map((item) => item.unit).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  const categories = [...new Set(sampleRegularRows.map((item) => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  const visibleRows = sampleRegularRows
+    .filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+    .filter((item) => unitFilter === 'all' || item.unit === unitFilter)
+    .filter((item) => categoryFilter === 'all' || item.category === categoryFilter)
+    .sort((a, b) => sort === 'default' ? 0 : sort === 'az' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name))
+
+  return (
+    <div className="section-page-content">
+      <section className="dashboard-card regular-ledger-card" id="regular">
+        <div className="ledger-heading">
+          <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular inventory</h2><p>Monthly stock card Â· {monthLabel}</p></div>
+          <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
+        </div>
+        <div className="regular-tools" role="search" aria-label="Filter Regular inventory items">
+          <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+          <label className="regular-select"><span>Unit of Measure</span><select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">All units</option>{units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
+          <label className="regular-select"><span>Category</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">All categories</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+          <div className="regular-sort"><span>Sort items</span><div><button type="button" className={sort === 'az' ? 'active' : ''} aria-pressed={sort === 'az'} onClick={() => setSort('az')}>A to Z</button><button type="button" className={sort === 'za' ? 'active' : ''} aria-pressed={sort === 'za'} onClick={() => setSort('za')}>Z to A</button></div></div>
+        </div>
+        <div className="ledger-hint"><span>â†”</span> Swipe or scroll horizontally to view all stock-card columns</div>
+        {visibleRows.length === 0 && <p className="regular-empty-results">No items match your search or filters.</p>}
+        <MonthlyStockCard rows={visibleRows} periodLabels={weeklyRanges} regular monthLabel={monthLabel} />
+      </section>
+    </div>
+  )
+}
+
+function SearchIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.7" cy="8.7" r="5.7" /><path d="m13 13 4 4" /></svg>
+}
+
+===== src/pages/RegularInventory.css =====
+.regular-tools { display: grid; grid-template-columns: minmax(190px, 1.35fr) minmax(145px, .8fr) minmax(180px, 1fr) auto; align-items: end; gap: 10px; padding: 13px 18px; border-top: 1px solid #edf1ee; background: #fff; }
+.regular-search, .regular-select { min-width: 0; height: 36px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid #dfe7e2; border-radius: 7px; background: #fff; color: #75847b; }
+.regular-search:focus-within, .regular-select:focus-within { border-color: #8db49a; box-shadow: 0 0 0 3px rgba(76, 137, 96, .1); }
+.regular-search svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.7; }
+.regular-search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: #344a3b; font: inherit; font-size: 11px; }
+.regular-search input::placeholder { color: #98a49c; }
+.regular-search input::-webkit-search-cancel-button { cursor: pointer; }
+.regular-select { position: relative; display: grid; grid-template-columns: 1fr; align-content: center; gap: 2px; padding: 3px 10px; }
+.regular-select > span, .regular-sort > span { color: #8a968e; font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.regular-select select { width: 100%; min-width: 0; padding: 0 15px 0 0; overflow: hidden; border: 0; outline: 0; appearance: none; background: transparent; color: #405449; font-family: inherit; font-size: 10px; text-overflow: ellipsis; cursor: pointer; }
+.regular-select::after { position: absolute; right: 11px; bottom: 10px; width: 5px; height: 5px; border-right: 1px solid #74877a; border-bottom: 1px solid #74877a; content: ''; pointer-events: none; transform: rotate(45deg); }
+.regular-sort { display: grid; gap: 5px; }
+.regular-sort > div { display: flex; gap: 4px; }
+.regular-sort button { height: 36px; padding: 0 11px; border: 1px solid #dfe7e2; border-radius: 7px; background: #fff; color: #64756a; font-family: inherit; font-size: 10px; cursor: pointer; }
+.regular-sort button:hover { border-color: #bfd4c5; background: #f8fbf8; }
+.regular-sort button.active { border-color: #b9d5c1; background: #edf6ef; color: #236342; font-weight: 700; }
+.regular-empty-results { margin: 0; padding: 18px; border-top: 1px solid #edf1ee; color: #78877e; font-size: 11px; text-align: center; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+
+@media (max-width: 760px) {
+  .regular-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 11px 14px; }
+  .regular-search { grid-column: 1 / -1; }
+  .regular-sort { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; }
+  .regular-sort > div { justify-content: flex-end; }
+  .regular-sort button { flex: 1; }
+}
+
+
+===== src/components/MonthlyStockCard.jsx =====
+export default function MonthlyStockCard({ rows, periodLabels, regular = false, monthLabel = 'November 2026' }) {
+  const days = Array.from({ length: 31 }, (_, index) => index + 1)
+  return (
+    <div className="ledger-scroll" role="region" aria-label={`${regular ? 'Regular' : 'Donation'} inventory monthly stock card, scroll horizontally to view all columns`} tabIndex="0">
+      <table className={`ledger-table ${regular ? 'regular-grid-table' : 'donation-grid-table'}`}>
+        <thead>
+          <tr>
+            <th rowSpan="2" className="ledger-num sticky-num">#</th><th rowSpan="2" className="ledger-item sticky-item">ITEMS</th>
+            {regular && <><th rowSpan="2" className="ledger-unit">UNIT OF<br />MEASURE</th><th rowSpan="2" className="ledger-price">UNIT<br />PRICE</th><th rowSpan="2" className="ledger-price">DPRI<br />PRICE</th><th rowSpan="2" className="ledger-category">CATEGORY</th><th rowSpan="2" className="ledger-other">OTHER CATEGORY<br />(MOBCHA, YAKAP)</th></>}
+            <th rowSpan="2" className="ledger-expiry">EXPIRY<br />DATE</th><th rowSpan="2" className="ledger-lot">LOT<br />NUMBER</th><th rowSpan="2" className="ledger-beginning">BEGINNING<br />BALANCE</th><th rowSpan="2" className="ledger-delivery">DELIVERY<br />DATE</th><th rowSpan="2" className="ledger-qty">QTY<br />DELIVERED</th>
+            <th colSpan={regular ? 32 : 31} className="ledger-month">{monthLabel.toUpperCase()}</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
+          </tr>
+          <tr>
+            {(regular ? days.slice(0, 3) : days).map((day) => <th className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{day}</th>)}
+            {regular && <th className="ledger-return">SL<br />RET</th>}
+            {regular && days.slice(3).map((day) => <th className="ledger-day" key={day}>{day}</th>)}
+            {periodLabels.map((range) => <th className="ledger-week" key={range}>{range}</th>)}
+          </tr>
+        </thead>
+        <tbody>{rows.map((item) => <tr key={item.no}>
+          <td className="ledger-num sticky-num">{item.no}</td><td className="ledger-item sticky-item">{item.name}</td>
+          {regular && <><td className="ledger-unit">{item.unit}</td><td className="ledger-price">{item.price}</td><td className="ledger-price">{item.dpri}</td><td className="ledger-category">{item.category}</td><td className="ledger-other">{item.other}</td></>}
+          <td className="ledger-expiry">{item.expiry}</td><td className="ledger-lot">{item.lot}</td><td className="ledger-beginning">{item.beginning}</td>
+          <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>
+          {regular && <>{days.slice(0, 3).map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}<td className="ledger-return">{item.daily.return || ''}</td>{days.slice(3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}</>}
+          {!regular && days.map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}
+          <td className={`ledger-ending ${item.ending < 0 ? 'ledger-negative' : ''}`}>{item.ending}</td><td className="ledger-month-total">{item.monthly}</td>{item.weekly.map((count, index) => <td className="ledger-week" key={periodLabels[index]}>{count}</td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+  )
+}
+
+
+
+
+===== src/components/MonthYearPicker.jsx =====
+import { useState } from 'react'
+
+const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function MonthPickerChevron() {
+  return <svg className="month-picker-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5" /></svg>
+}
+
+function MonthPickerArrow({ direction }) {
+  const path = direction === 'previous' ? 'm12 4-6 6 6 6' : 'm8 4 6 6-6 6'
+  return <svg className="month-picker-arrow-icon" viewBox="0 0 20 20" aria-hidden="true"><path d={path} /></svg>
+}
+
+export default function MonthYearPicker({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(() => Number(value.split('-')[0]))
+  const [year, monthNumber] = value.split('-').map(Number)
+  const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  return <div className="month-picker-wrap">
+    <button type="button" className="ledger-filter month-picker-trigger" aria-expanded={isOpen} aria-haspopup="dialog" onClick={() => { setPickerYear(year); setIsOpen((open) => !open) }}><span>{monthLabel}</span><MonthPickerChevron /></button>
+    {isOpen && <div className="month-picker-popover" role="dialog" aria-label="Select inventory month">
+      <div className="month-picker-header"><button type="button" aria-label="Previous year" onClick={() => setPickerYear((currentYear) => currentYear - 1)}><MonthPickerArrow direction="previous" /></button><strong>{pickerYear}</strong><button type="button" aria-label="Next year" onClick={() => setPickerYear((currentYear) => currentYear + 1)}><MonthPickerArrow direction="next" /></button></div>
+      <div className="month-picker-grid">{monthShortNames.map((month, index) => <button type="button" key={month} className={year === pickerYear && monthNumber === index + 1 ? 'selected-month' : ''} aria-pressed={year === pickerYear && monthNumber === index + 1} onClick={() => { onChange(`${pickerYear}-${String(index + 1).padStart(2, '0')}`); setIsOpen(false) }}>{month}</button>)}</div>
+    </div>}
+  </div>
+}
+
+
+
+===== src/App.css =====
+.page-shell {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.login-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.82fr);
+  align-items: center;
+  gap: clamp(48px, 8vw, 112px);
+}
+
+.login-intro {
+  min-height: 620px;
+  padding: 46px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  color: #17352b;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.brand strong {
+  font-weight: 800;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #dcefe5;
+  color: #176345;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.intro-copy {
+  max-width: 560px;
+  margin: 72px 0;
+}
+
+.eyebrow {
+  margin: 0 0 16px;
+  color: #397b5e;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.intro-copy h1 {
+  margin: 0;
+  color: #18372d;
+  font-size: clamp(38px, 5vw, 58px);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 1.08;
+}
+
+.intro-copy > p:last-child {
+  max-width: 410px;
+  margin-top: 20px;
+  color: #63766e;
+  font-size: 16px;
+}
+
+.intro-footer {
+  color: #819087;
+  font-size: 13px;
+}
+
+.login-panel {
+  padding: clamp(28px, 5vw, 48px);
+  border: 1px solid #e4ece7;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(27, 62, 46, 0.08);
+}
+
+.login-heading h2 {
+  margin: 0;
+  color: #1c3028;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+
+.login-heading > p:last-child {
+  margin-top: 10px;
+  color: #718078;
+  font-size: 14px;
+}
+
+.login-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.login-form label {
+  margin-top: 10px;
+  color: #30443a;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.login-form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border: 1px solid #d6e0da;
+  border-radius: 9px;
+  background: #fbfdfb;
+  color: #1d3128;
+  font: inherit;
+  font-size: 15px;
+}
+
+.login-form input:focus {
+  border-color: #31825d;
+  outline: 3px solid rgba(49, 130, 93, 0.14);
+}
+
+.submit-button {
+  min-height: 48px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #176345;
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #104e35;
+  transform: translateY(-1px);
+}
+
+.submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.login-note {
+  margin-top: 24px;
+  color: #7a8981;
+  font-size: 12px;
+  text-align: center;
+}
+
+.form-message {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.form-message-error {
+  border: 1px solid #f1c8c3;
+  background: #fff6f5;
+  color: #9c3025;
+}
+
+.retry-button {
+  margin-top: 14px;
+}
+
+.text-button {
+  padding: 9px 13px;
+  border: 1px solid #d7e3dc;
+  border-radius: 8px;
+  background: #fff;
+  color: #315746;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.text-button:hover:not(:disabled) {
+  background: #f3f8f4;
+}
+
+.text-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.loading-card {
+  margin: 32vh auto 0;
+  color: #557064;
+  font-size: 14px;
+  text-align: center;
+}
+
+.topbar {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e6ede8;
+}
+
+.welcome-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 28px;
+  align-items: center;
+  padding: 64px 0 42px;
+}
+
+.welcome-copy h1 {
+  margin: 0;
+  color: #18372d;
+  font-size: clamp(34px, 5vw, 48px);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+}
+
+.welcome-description {
+  max-width: 550px;
+  margin-top: 16px;
+  color: #63766e;
+  font-size: 15px;
+}
+
+.role-card {
+  padding: 20px;
+  border: 1px solid #e1ece5;
+  border-radius: 14px;
+  background: #f8fbf8;
+}
+
+.role-card-label {
+  color: #718078;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.role-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e2f1e8;
+  color: #205a3e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.role-card p {
+  margin-top: 12px;
+  color: #63766e;
+  font-size: 13px;
+}
+
+.next-step-card {
+  display: flex;
+  gap: 18px;
+  padding: 25px;
+  border: 1px solid #e2ebe5;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.next-step-icon {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e2f1e8;
+  color: #236744;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.next-step-card h2 {
+  margin: 2px 0 8px;
+  color: #21382d;
+  font-size: 18px;
+}
+
+.next-step-card p {
+  color: #65766e;
+  font-size: 14px;
+}
+
+.next-step-card .module-note {
+  margin-top: 12px;
+  color: #829087;
+  font-size: 12px;
+}
+
+/* Admin dashboard preview */
+.dashboard-shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); background: #f6f8f6; transition: grid-template-columns 180ms ease; }
+.dashboard-shell.sidebar-closed { grid-template-columns: 68px minmax(0, 1fr); }
+.dashboard-sidebar { position: sticky; top: 0; height: 100vh; min-width: 0; display: flex; flex-direction: column; padding: 27px 17px 18px; overflow: hidden; border-right: 1px solid #e8ede9; background: #fff; transition: width 180ms ease, padding 180ms ease, transform 180ms ease; }
+.dashboard-shell.sidebar-closed .dashboard-sidebar { width: 68px; align-items: center; padding: 22px 7px 14px; visibility: visible; }
+.dashboard-shell.sidebar-closed .sidebar-brand-row { flex-direction: column; justify-content: center; gap: 9px; }
+.dashboard-shell.sidebar-closed .dashboard-brand > span:last-child, .dashboard-shell.sidebar-closed .sidebar-caption, .dashboard-shell.sidebar-closed .sidebar-label, .dashboard-shell.sidebar-closed .sidebar-chevron, .dashboard-shell.sidebar-closed .sidebar-link small, .dashboard-shell.sidebar-closed .sidebar-sublink-label, .dashboard-shell.sidebar-closed .sidebar-user-info, .dashboard-shell.sidebar-closed .sidebar-mobile-close { display: none; }
+.dashboard-shell.sidebar-closed .dashboard-brand { padding: 0; }
+.dashboard-shell.sidebar-closed .sidebar-nav { justify-items: center; width: 100%; margin-top: 27px; }
+.dashboard-shell.sidebar-closed .sidebar-link { width: 50px; min-height: 46px; justify-content: center; gap: 0; padding: 0; }
+.dashboard-shell.sidebar-closed .sidebar-parent { width: 50px; }
+.dashboard-shell.sidebar-closed .sidebar-icon { width: auto; }
+.dashboard-shell.sidebar-closed .sidebar-submenu { justify-items: center; gap: 4px; margin: 5px 0 9px; padding: 0; border: 0; }
+.dashboard-shell.sidebar-closed .sidebar-sublink { width: 42px; min-height: 38px; justify-content: center; padding: 0; }
+.dashboard-shell.sidebar-closed .sidebar-submenu-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: #f2f6f3; color: #5a7664; font-size: 10px; font-weight: 750; }
+.dashboard-shell.sidebar-closed .sidebar-bottom { flex-direction: column; gap: 8px; padding: 13px 0 0; }
+.dashboard-shell.sidebar-closed .sidebar-logout { margin: 0; }
+.sidebar-brand-row { display: flex; align-items: center; justify-content: space-between; }
+.sidebar-mobile-close { display: none; }
+.sidebar-backdrop { display: none; }
+.dashboard-title-group { display: flex; align-items: center; gap: 14px; }
+.sidebar-toggle { width: 36px; height: 36px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid #e2e9e4; border-radius: 8px; background: #fff; cursor: pointer; }
+.sidebar-toggle span { width: 15px; height: 2px; border-radius: 2px; background: #547061; }
+.dashboard-brand { gap: 10px; padding: 0 7px; font-size: 13px; letter-spacing: .04em; }
+.dashboard-brand .brand-mark { width: 35px; height: 35px; border-radius: 11px; font-size: 25px; }
+.sidebar-caption { margin: 43px 10px 12px; color: #9aa69f; font-size: 10px; font-weight: 800; letter-spacing: .13em; }
+.sidebar-nav { display: grid; gap: 5px; }
+.sidebar-link { min-height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent; color: #617168; font-size: 13px; font-weight: 550; text-align: left; text-decoration: none; cursor: pointer; }
+.sidebar-link > .sidebar-icon { width: 17px; flex: 0 0 17px; color: #829188; font-size: 17px; text-align: center; }
+.sidebar-icon-svg { display: block; height: 17px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar-link small { margin-left: auto; padding: 3px 5px; border-radius: 4px; background: #f0f3f1; color: #87948c; font-size: 9px; }
+.sidebar-link:hover, .sidebar-link.active { background: #edf6f0; color: #216243; }
+.sidebar-link.active { font-weight: 700; }
+.sidebar-link.active > span { color: #26734d; }
+.sidebar-link.active > .sidebar-icon { color: #26734d; }
+.sidebar-parent { width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.sidebar-chevron { width: 15px !important; height: 15px; flex: 0 0 15px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform 150ms ease; }
+.sidebar-group.is-open .sidebar-chevron { transform: rotate(180deg); }
+.sidebar-submenu { display: grid; gap: 3px; margin: 4px 0 7px 28px; padding-left: 10px; border-left: 1px solid #e4ece6; }
+.sidebar-sublink { min-height: 32px; display: flex; align-items: center; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: #75837a; font-family: inherit; font-size: 12px; text-align: left; text-decoration: none; cursor: pointer; }
+.sidebar-sublink:hover, .sidebar-sublink.active { background: #f0f7f2; color: #286b48; }
+.sidebar-sublink.active { font-weight: 700; }
+.sidebar-submenu-icon { display: none; }
+.sidebar-bottom { display: flex; align-items: center; gap: 10px; margin-top: auto; padding: 14px 4px 0; border-top: 1px solid #edf0ee; }
+.sidebar-user-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #e6f1e9; color: #286647; font-size: 13px; font-weight: 750; }
+.sidebar-user-info { display: grid; gap: 3px; min-width: 0; }
+.sidebar-user-info strong { overflow: hidden; color: #34473d; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-user-info span { color: #89958e; font-size: 11px; }
+.sidebar-logout { width: 30px; height: 30px; display: grid; place-items: center; margin-left: auto; border: 0; border-radius: 7px; background: transparent; color: #738278; cursor: pointer; }
+.sidebar-logout svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar-logout:hover { background: #f1f6f2; color: #286647; }
+.dashboard-main { width: min(1440px, 100%); margin: 0 auto; padding: 0 38px 18px; }
+.dashboard-header { min-height: 90px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e6ebe7; }
+.dashboard-header .eyebrow { margin-bottom: 5px; font-size: 9px; }
+.dashboard-header h1 { margin: 0; color: #20352b; font-size: 23px; letter-spacing: -.035em; }
+.dashboard-header-actions { display: flex; align-items: center; gap: 14px; }
+.sample-indicator { display: inline-flex; align-items: center; gap: 7px; color: #728078; font-size: 11px; }
+.sample-indicator i, .stock-status i { width: 7px; height: 7px; border-radius: 50%; background: #78a58a; }
+.dashboard-welcome { display: flex; align-items: end; justify-content: space-between; padding: 27px 0 21px; }
+.dashboard-welcome h2 { margin: 0; color: #253a30; font-size: 21px; letter-spacing: -.035em; }
+.dashboard-welcome p { margin: 6px 0 0; color: #7c8981; font-size: 12px; }
+.dashboard-date { padding-bottom: 2px; color: #97a19b; font-size: 9px; font-weight: 750; letter-spacing: .1em; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.metric-card, .dashboard-card { border: 1px solid #e6ebe7; border-radius: 10px; background: #fff; }
+.metric-card { min-height: 119px; padding: 16px 17px 13px; }
+.metric-label { display: flex; align-items: center; justify-content: space-between; color: #829087; font-size: 9px; font-weight: 800; letter-spacing: .055em; }
+.metric-icon { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 8px; font-size: 13px; }
+.metric-icon.green { background: #edf6ef; color: #377653; }.metric-icon.amber { background: #fff5e6; color: #b87b1e; }.metric-icon.blue { background: #edf4fa; color: #477eaa; }.metric-icon.violet { background: #f2effa; color: #7965a5; }
+.metric-card > strong { display: block; margin-top: 8px; color: #253a30; font-size: 25px; line-height: 1; letter-spacing: -.04em; }
+.metric-card > p { margin: 7px 0 0; color: #8b9690; font-size: 10px; }
+.metric-positive { color: #38825a; font-weight: 700; }.metric-warning { color: #b37924; font-weight: 650; }
+.dashboard-content-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .9fr); gap: 15px; margin-top: 16px; }
+.dashboard-card { min-width: 0; padding: 18px; }
+.regular-ledger-card { grid-column: 1 / -1; overflow: hidden; padding: 0; }
+.ledger-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 22px 15px; }
+.ledger-kicker { color: #4d8965; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.ledger-heading h2 { margin: 5px 0 0; color: #263c31; font-size: 17px; letter-spacing: -.025em; }
+.ledger-heading p { margin: 5px 0 0; color: #8a968e; font-size: 11px; }
+.ledger-actions { display: flex; align-items: center; gap: 14px; }
+.ledger-filter { display: inline-flex; align-items: center; gap: 18px; padding: 8px 10px; border: 1px solid #e4eae5; border-radius: 7px; background: #fff; color: #506157; font-size: 10px; }
+.month-picker-wrap { position: relative; }
+.month-picker-trigger { width: 140px; min-width: 140px; height: 36px; justify-content: space-between; gap: 8px; padding: 0 11px; border-color: #dfe7e2; border-radius: 8px; color: #52675a; font-family: inherit; font-size: 10px; text-align: left; cursor: pointer; }
+.month-picker-trigger > .month-picker-chevron { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: #52799a; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; transition: transform 140ms ease; }
+.month-picker-trigger[aria-expanded="true"] > .month-picker-chevron { transform: rotate(180deg); }
+.month-picker-trigger:hover, .month-picker-trigger[aria-expanded="true"] { border-color: #b9d1c2; background: #fcfefd; }
+.month-picker-popover { position: absolute; top: calc(100% + 5px); right: 0; z-index: 20; width: 184px; padding: 8px; border: 1px solid #d9e1dc; border-radius: 8px; background: #fff; box-shadow: 0 10px 28px rgba(31, 54, 41, .16); }
+.month-picker-header { display: flex; align-items: center; justify-content: space-between; height: 32px; margin-bottom: 5px; color: #30483a; }
+.month-picker-header strong { font-size: 12px; }
+.month-picker-header button { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 5px; background: transparent; color: #63766a; cursor: pointer; }
+.month-picker-header button:hover { background: #f0f6f2; color: #236442; }
+.month-picker-arrow-icon { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.month-picker-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+.month-picker-grid button { min-height: 34px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #526459; font-family: inherit; font-size: 10px; cursor: pointer; }
+.month-picker-grid button:hover { border-color: #dbeae0; background: #f3f8f4; }
+.month-picker-grid button.selected-month { border-color: #d5eaf6; background: #eaf6fc; color: #245d7c; font-weight: 750; }
+.ledger-hint { display: none; padding: 8px 22px; border-top: 1px solid #eef1ee; color: #849188; font-size: 10px; }
+.ledger-hint span { margin-right: 5px; color: #4f8965; font-size: 13px; }
+.ledger-scroll { max-height: min(64vh, 640px); overflow: auto; border-top: 1px solid #dce5df; overscroll-behavior: contain; scrollbar-color: #afc2b4 #f3f6f3; scrollbar-width: thin; touch-action: pan-x pan-y; }
+.ledger-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; color: #425349; font-size: 11px; text-align: center; }
+.ledger-table th, .ledger-table td { height: 43px; padding: 7px 9px; border-right: 1px solid #d5dfd9; border-bottom: 1px solid #d5dfd9; background: #fff; vertical-align: middle; }
+.ledger-table th { position: sticky; top: 0; z-index: 3; height: 54px; background: #dceaf4; color: #31475a; font-size: 10px; font-weight: 800; line-height: 1.25; }
+.ledger-table thead tr:nth-child(2) th { top: 54px; height: 35px; padding: 5px; background: #a9cbe5; }
+.ledger-table thead .ledger-month { height: 54px; background: #fff; color: #b83333; font-size: 16px; letter-spacing: .04em; }
+.ledger-table tbody tr:nth-child(even) td { background-color: #fbfcfb; }
+.ledger-table th.ledger-num, .ledger-table td.ledger-num { width: 48px; min-width: 48px; }
+.ledger-table th.ledger-item, .ledger-table td.ledger-item { width: 255px; min-width: 255px; text-align: left; white-space: normal; line-height: 1.35; }
+.ledger-table td.ledger-item { color: #355b43; font-weight: 650; }
+.ledger-table .sticky-num, .ledger-table .sticky-item { position: sticky; z-index: 2; }
+.ledger-table .sticky-num { left: 0; }
+.ledger-table .sticky-item { left: 48px; box-shadow: 2px 0 4px rgba(35, 57, 43, .08); }
+.ledger-table thead .sticky-num, .ledger-table thead .sticky-item { z-index: 5; background: #dceaf4; }
+.ledger-table thead tr:nth-child(2) .sticky-num, .ledger-table thead tr:nth-child(2) .sticky-item { top: 54px; }
+.ledger-table .ledger-unit { width: 90px; min-width: 90px; }
+.ledger-table .ledger-price { width: 96px; min-width: 96px; }
+.ledger-table .ledger-category { width: 160px; min-width: 160px; white-space: normal; }
+.ledger-table .ledger-other { width: 150px; min-width: 150px; white-space: normal; }
+.ledger-table .ledger-expiry { width: 105px; min-width: 105px; white-space: pre-line; }
+.ledger-table .ledger-lot { width: 115px; min-width: 115px; white-space: pre-line; }
+.ledger-table .ledger-beginning { width: 112px; min-width: 112px; }
+.ledger-table .ledger-delivery { width: 125px; min-width: 125px; white-space: pre-line; }
+.ledger-table .ledger-qty { width: 120px; min-width: 120px; }
+.ledger-table .ledger-day { width: 42px; min-width: 42px; padding: 5px 3px; }
+.ledger-table .selected-day { background-color: #d6e9f7 !important; }
+.ledger-table .ledger-return { width: 56px; min-width: 56px; background-color: #fff4a8; color: #655b16; }
+.ledger-table .ledger-ending { width: 115px; min-width: 115px; font-weight: 700; }
+.ledger-table .ledger-month-total { width: 132px; min-width: 132px; background-color: #eaf2f8; font-weight: 700; }
+.ledger-table .ledger-week-group { background: #69c6df; color: #174b5b; }
+.ledger-table .ledger-week { width: 72px; min-width: 72px; background-color: #edf5fa; }
+.ledger-table .ledger-negative { background-color: #df4f4b !important; color: #fff; font-weight: 800; }
+.ledger-table .ledger-multiline { padding: 0 8px; white-space: pre-line; }
+.ledger-multiline span { display: block; padding: 4px 0; }
+.ledger-multiline span + span { border-top: 1px dashed #dce5df; }
+.ledger-multiline small { display: block; margin-top: 2px; color: #7c8c82; font-size: 9px; }
+.estock-other-card { min-height: 140px; }
+.section-pill { padding: 5px 8px; border-radius: 999px; background: #edf6ef; color: #4d7d5e; font-size: 9px; font-weight: 700; }
+.section-preview { margin: 20px 0 0; color: #929c96; font-size: 11px; }
+.card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.card-heading h2 { margin: 0; color: #2b4035; font-size: 14px; letter-spacing: -.02em; }
+.card-heading p { margin: 5px 0 0; color: #929c96; font-size: 10px; }
+.card-heading > a, .team-link { color: #397a57; font-size: 10px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.card-heading > a span, .team-link span { margin-left: 3px; }
+.table-wrap { overflow-x: auto; margin: 16px -18px -4px; }
+.table-wrap table { width: 100%; border-collapse: collapse; text-align: left; }
+.table-wrap th { padding: 9px 14px; border-top: 1px solid #f0f2f0; border-bottom: 1px solid #f0f2f0; color: #98a29c; font-size: 8px; font-weight: 800; letter-spacing: .065em; white-space: nowrap; }
+.table-wrap th:first-child, .table-wrap td:first-child { padding-left: 18px; }
+.table-wrap td { padding: 12px 14px; border-bottom: 1px solid #f1f3f1; color: #77847b; font-size: 10px; white-space: nowrap; }
+.table-wrap tr:last-child td { border-bottom: 0; }
+.table-wrap td strong { color: #405349; font-size: 10px; font-weight: 650; }
+.stock-status { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; }
+.stock-status i { width: 6px; height: 6px; }
+.status-low { color: #b65f4f; }.status-low i { background: #d27b69; }.status-soon { color: #ad792a; }.status-soon i { background: #d9ad59; }.status-ok { color: #49815f; }
+.period-chip { padding: 6px 8px; border: 1px solid #e9eeea; border-radius: 6px; color: #738078; font-size: 9px; }
+.chart-total { display: flex; align-items: baseline; gap: 7px; margin-top: 15px; }.chart-total strong { color: #283e33; font-size: 22px; }.chart-total span { color: #929c96; font-size: 10px; }
+.movement-chart { height: 104px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 9px; align-items: stretch; margin-top: 10px; padding-top: 2px; border-bottom: 1px solid #edf0ed; }
+.chart-day { display: flex; flex-direction: column; align-items: center; justify-content: end; gap: 6px; color: #9aa49e; font-size: 9px; }
+.chart-bars { width: 100%; height: 80px; display: flex; align-items: end; justify-content: center; gap: 3px; }.chart-bars i { width: min(11px, 38%); min-height: 6px; border-radius: 3px 3px 0 0; background: #83b394; }.chart-bars i + i { background: #d6e8db; }
+.chart-legend { display: flex; gap: 14px; margin-top: 12px; color: #87938b; font-size: 9px; }.chart-legend span { display: inline-flex; align-items: center; gap: 5px; }.chart-legend i { width: 7px; height: 7px; border-radius: 2px; }.legend-in { background: #83b394; }.legend-out { background: #d6e8db; }
+.activity-list { margin-top: 13px; }.activity-row { min-height: 51px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #f0f2f0; }.activity-mark { flex: 0 0 25px; width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #edf6ef; color: #40805b; font-size: 14px; font-weight: 700; }.activity-alert { background: #fff4e8; color: #ba8027; }
+.activity-copy { display: grid; gap: 4px; min-width: 0; }.activity-copy strong { color: #46584e; font-size: 10px; font-weight: 650; }.activity-copy span { overflow: hidden; color: #929c96; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }.activity-row time { margin-left: auto; color: #9aa49e; font-size: 9px; white-space: nowrap; }
+.team-icon { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 8px; background: #edf6ef; color: #397553; }.team-total { display: flex; align-items: baseline; gap: 8px; margin-top: 19px; }.team-total strong { color: #283e33; font-size: 26px; }.team-total span { color: #89958d; font-size: 10px; }.team-roles { display: flex; gap: 8px; margin-top: 12px; }.team-roles span { flex: 1; display: flex; justify-content: space-between; padding: 8px 9px; border-radius: 6px; background: #f7f9f7; color: #78857c; font-size: 9px; }.team-roles b { color: #40584a; }.team-link { display: inline-block; margin-top: 14px; }
+.dashboard-footer { padding: 17px 2px 0; color: #9aa49e; font-size: 9px; }
+.section-page-content { margin-top: 22px; }
+
+@media (max-width: 760px) {
+  .page-shell {
+    width: min(100% - 32px, 520px);
+  }
+
+  .login-layout {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 28px;
+    padding: 28px 0;
+  }
+
+  .login-intro {
+    min-height: auto;
+    padding: 0;
+  }
+
+  .intro-copy {
+    margin: 44px 0 0;
+  }
+
+  .intro-copy h1 {
+    font-size: 38px;
+  }
+
+  .intro-footer {
+    display: none;
+  }
+
+  .login-panel {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 26px 22px;
+  }
+
+  .welcome-panel {
+    grid-template-columns: 1fr;
+    padding: 42px 0 28px;
+  }
+
+  .dashboard-shell, .dashboard-shell.sidebar-closed { display: grid; grid-template-columns: 72px minmax(0, 1fr); min-height: 100vh; }
+  .dashboard-sidebar, .dashboard-shell.sidebar-closed .dashboard-sidebar { position: sticky; inset: auto; z-index: 2; width: 72px; min-width: 72px; height: 100dvh; padding: 17px 8px 12px; overflow-x: hidden; overflow-y: auto; border: 0; border-right: 1px solid #e8ede9; background: #fff; box-shadow: none; transform: none; visibility: visible; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open { position: fixed; inset: 0 auto 0 0; z-index: 31; width: min(300px, 86vw); min-width: 0; height: 100dvh; padding: 20px 16px 16px; overflow-x: hidden; overflow-y: auto; border-right: 1px solid #e8ede9; box-shadow: 12px 0 36px rgba(21, 45, 31, .12); align-items: stretch; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .dashboard-brand > span:last-child, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-caption, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-label, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-chevron, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-link small, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-sublink-label, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-user-info, .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-mobile-close { display: initial; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-caption { display: block; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-user-info { display: grid; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-mobile-close { display: grid; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .dashboard-brand { padding: 0 7px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-nav { justify-items: stretch; width: 100%; margin-top: 0; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-link { width: 100%; min-height: 42px; justify-content: flex-start; gap: 12px; padding: 0 11px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-parent { width: 100%; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-icon { width: 17px; flex: 0 0 17px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-submenu { justify-items: stretch; gap: 3px; margin: 4px 0 7px 28px; padding-left: 10px; border-left: 1px solid #e4ece6; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-sublink { width: 100%; min-height: 32px; justify-content: flex-start; padding: 0 10px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-submenu-icon { display: none; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-bottom { flex-direction: row; gap: 10px; padding: 14px 4px 0; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-logout { margin-left: auto; }
+  .sidebar-brand-row { min-height: 38px; }
+  .sidebar-mobile-close { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 7px; background: #f2f6f3; color: #526a5b; cursor: pointer; }
+  .sidebar-mobile-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  .dashboard-sidebar .sidebar-caption, .dashboard-sidebar .sidebar-bottom { display: none; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .dashboard-brand > span:last-child, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-label, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-chevron, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-link small, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-sublink-label, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-user-info { display: none; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .dashboard-brand { padding: 0; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-nav { grid-template-columns: 1fr; justify-items: center; gap: 4px; margin-top: 23px; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-link { width: 50px; min-height: 42px; justify-content: center; gap: 0; padding: 0; white-space: nowrap; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-icon { width: auto; flex: 0 0 auto; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-group { grid-column: auto; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-parent { width: 50px; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-submenu { justify-items: center; gap: 4px; margin: 5px 0 7px; padding: 0; border: 0; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-sublink { width: 42px; min-height: 36px; justify-content: center; padding: 0; border: 0; background: transparent; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-submenu-icon { display: grid; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-bottom { display: grid; justify-items: center; gap: 8px; padding: 12px 0 0; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-logout { margin: 0; }
+  .dashboard-shell.sidebar-open .sidebar-backdrop { position: fixed; inset: 0; z-index: 30; display: block; border: 0; background: rgba(18, 34, 25, .35); }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-caption { margin-top: 30px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-nav { grid-template-columns: 1fr; gap: 5px; margin-top: 0; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-link { min-height: 42px; gap: 12px; padding: 0 11px; font-size: 13px; white-space: normal; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-icon { width: 17px; flex: 0 0 17px; font-size: 17px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-link small { display: inline; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-group { grid-column: auto; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-parent { justify-content: flex-start; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-submenu { display: grid; gap: 3px; margin: 4px 0 7px 28px; padding-left: 10px; border-left: 1px solid #e4ece6; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-sublink { min-height: 32px; padding: 0 10px; border: 0; background: transparent; font-size: 12px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-sublink.active { border-color: transparent; background: #f0f7f2; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-bottom { display: flex; }
+  .dashboard-main { padding: 0 16px 18px; }
+  .dashboard-header { min-height: 75px; }
+  .dashboard-title-group { gap: 9px; }
+  .dashboard-shell.sidebar-closed .sidebar-brand-row { min-height: 80px; flex-direction: column; justify-content: flex-start; gap: 10px; }
+  .dashboard-shell.sidebar-closed .dashboard-brand .brand-mark { width: 34px; height: 34px; }
+  .dashboard-shell.sidebar-closed .sidebar-toggle { width: 36px; height: 36px; }
+  .dashboard-shell.sidebar-open .sidebar-brand-row { flex-direction: row; justify-content: space-between; gap: 8px; }
+  .dashboard-shell.sidebar-open .dashboard-sidebar.is-open .sidebar-toggle { flex: 0 0 34px; width: 34px; }
+  .dashboard-header .eyebrow { font-size: 8px; }
+  .dashboard-header h1 { font-size: 20px; }
+  .dashboard-header-actions { gap: 8px; }
+  .sample-indicator { font-size: 9px; }
+  .dashboard-header-actions .text-button { padding: 7px 9px; font-size: 11px; }
+  .dashboard-welcome { padding-top: 22px; }
+  .dashboard-date { display: none; }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .metric-card { min-height: 110px; padding: 13px; }
+  .metric-label { font-size: 8px; }
+  .metric-icon { width: 24px; height: 24px; }
+  .dashboard-content-grid { grid-template-columns: 1fr; gap: 11px; margin-top: 11px; }
+  .regular-ledger-card { grid-column: 1; }
+  .ledger-heading { align-items: flex-start; padding: 16px 14px 12px; }
+  .ledger-actions { flex-direction: column; align-items: flex-end; gap: 7px; }
+  .ledger-actions .sample-indicator { font-size: 8px; }
+  .ledger-filter { gap: 8px; padding: 7px; font-size: 9px; white-space: nowrap; }
+  .ledger-hint { display: block; padding: 7px 14px; }
+  .ledger-scroll { max-height: 64vh; }
+  .ledger-table { font-size: 10px; }
+  .ledger-table th { font-size: 9px; }
+}
+
+@media (min-width: 761px) and (max-width: 1050px) {
+  .dashboard-shell { grid-template-columns: 210px minmax(0, 1fr); }
+  .dashboard-main { padding: 0 22px 18px; }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-content-grid { grid-template-columns: minmax(0, 1.2fr) minmax(250px, .8fr); }
+}
+
+
+===== PREVIOUS BACKUP CONTENT PRESERVED BELOW =====
+import { useEffect, useState } from 'react'
+import UserManagement from './pages/UserManagement.jsx'
+import { requestJson, roleTitle } from './services/api.js'
+import './App.css'
+const sampleRegularRows = [
+  { no: 1, name: '0.9 Sodium Chloride, 50ml vial', unit: 'vial', price: 'â‚±44.55', dpri: 'â‚±59.88', category: 'SMALL VIALS', other: 'NONE', expiry: '04/2031', lot: '260418', beginning: 734, deliveries: [{ date: '7/2/2026', qty: 300, vendor: 'EUROMED' }], daily: { 3: 8, 4: 1 }, ending: 725, monthly: 9, weekly: [9, 0, 0, 0, 0] },
+  { no: 9, name: 'Acetylcysteine 600mg tablet', unit: 'tablet', price: 'â‚±23.00', dpri: 'â‚±36.36', category: 'COUGH SUPPRESSANTS', other: '', expiry: '03/2029', lot: '2603085\n0495', beginning: 1661, deliveries: [{ date: '10/14/2026', qty: 50, vendor: 'OAK' }, { date: '10/23/2026', qty: 100, vendor: 'ICS' }], daily: { 1: 63, 2: 38, 3: 34, 5: 36 }, ending: 1490, monthly: 171, weekly: [135, 36, 0, 0, 0] },
+  { no: 14, name: 'Albendazole 400mg tablet', unit: 'tablet', price: 'â‚±7.00', dpri: 'â‚±8.00', category: 'ANTI-BIOTICS / MICROBIALS', other: '', expiry: '02/2028\n10/2027', lot: 'XT6C022\nXT5K007', beginning: 294, deliveries: [{ date: '4/28/2026', qty: 200, vendor: 'DYNA' }, { date: '5/5/2026', qty: 100, vendor: 'OAK' }], daily: {}, ending: 294, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+]
+
+const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
+const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const dashboardSectionKeys = ['overview', 'regular', 'donation', 'mhmap', 'monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation', 'user-management']
+
+function MonthPickerChevron() {
+  return <svg className="month-picker-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5" /></svg>
+}
+
+function MonthPickerArrow({ direction }) {
+  const path = direction === 'previous' ? 'm12 4-6 6 6 6' : 'm8 4 6 6-6 6'
+  return <svg className="month-picker-arrow-icon" viewBox="0 0 20 20" aria-hidden="true"><path d={path} /></svg>
+}
+
+function MonthYearPicker({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(() => Number(value.split('-')[0]))
+  const [year, monthNumber] = value.split('-').map(Number)
+  const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  return <div className="month-picker-wrap">
+    <button type="button" className="ledger-filter month-picker-trigger" aria-expanded={isOpen} aria-haspopup="dialog" onClick={() => { setPickerYear(year); setIsOpen((open) => !open) }}><span>{monthLabel}</span><MonthPickerChevron /></button>
+    {isOpen && <div className="month-picker-popover" role="dialog" aria-label="Select inventory month">
+      <div className="month-picker-header"><button type="button" aria-label="Previous year" onClick={() => setPickerYear((currentYear) => currentYear - 1)}><MonthPickerArrow direction="previous" /></button><strong>{pickerYear}</strong><button type="button" aria-label="Next year" onClick={() => setPickerYear((currentYear) => currentYear + 1)}><MonthPickerArrow direction="next" /></button></div>
+      <div className="month-picker-grid">{monthShortNames.map((month, index) => <button type="button" key={month} className={year === pickerYear && monthNumber === index + 1 ? 'selected-month' : ''} aria-pressed={year === pickerYear && monthNumber === index + 1} onClick={() => { onChange(`${pickerYear}-${String(index + 1).padStart(2, '0')}`); setIsOpen(false) }}>{month}</button>)}</div>
+    </div>}
+  </div>
+}
+
+function SidebarIcon({ name }) {
+  const shapes = {
+    overview: <><rect x="3.5" y="3.5" width="7" height="7" rx="1" /><rect x="13.5" y="3.5" width="7" height="7" rx="1" /><rect x="3.5" y="13.5" width="7" height="7" rx="1" /><rect x="13.5" y="13.5" width="7" height="7" rx="1" /></>,
+    estock: <><path d="m12 3 8.5 4.5L12 12 3.5 7.5 12 3Z" /><path d="M3.5 12 12 16.5l8.5-4.5M3.5 16.5 12 21l8.5-4.5M12 12v9" /></>,
+    monthly: <><path d="M4 19.5h16M6.5 16v-4m5 4V7m5 9v-6" /><path d="M4 4.5h16" /></>,
+    inventory: <><path d="m4 7 8-4 8 4v10l-8 4-8-4V7Z" /><path d="m4 7 8 4 8-4M12 11v10" /></>,
+    rpci: <><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" /><path d="M14 3.5v4h4M8.5 12h7M8.5 15.5h7" /></>,
+    users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.5a3.1 3.1 0 0 1 0 6M17 15a4.8 4.8 0 0 1 3.5 4.6" /></>,
+    movement: <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.7 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.3 15" /></>,
+    reports: <><path d="M4 20V10m5 10V4m5 16v-7m5 7V7" /><path d="M2.5 20.5h19" /></>,
+  }
+  return <svg className="sidebar-icon sidebar-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{shapes[name]}</svg>
+}
+
+function getSavedDashboardSection() {
+  try {
+    const savedSection = window.sessionStorage.getItem('pharma-dashboard-section')
+    return dashboardSectionKeys.includes(savedSection) ? savedSection : 'overview'
+  } catch {
+    return 'overview'
+  }
+}
+
+function getInitialSidebarOpen() {
+  return typeof window === 'undefined' ? true : window.innerWidth > 760
+}
+
+const sampleDonationRows = [
+  { no: 1, name: 'Aciclovir 250mg vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 2, name: 'Amikacin 125mg/ml vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [{ date: '9/4/2026', qty: 68, vendor: 'PGH' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 4, name: 'Amino Acid 7%', unit: 'bottle', category: 'Donation', expiry: '12/2026', lot: '2250117', beginning: 10, deliveries: [{ date: '10/14/2026', qty: 20, vendor: 'VMC' }], daily: { 1: 1, 3: 4, 4: 5 }, ending: 0, monthly: 10, weekly: [10, 0, 0, 0, 0] },
+  { no: 5, name: '5% Amino Acids in 5% Sorbitol', unit: 'bottle', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [], daily: { 4: 1 }, ending: -1, monthly: 1, weekly: [1, 0, 0, 0, 0] },
+  { no: 16, name: 'Azithromycin 500mg vial', unit: 'vial', category: 'Donation', expiry: '01/2027', lot: 'R45240151', beginning: 397, deliveries: [{ date: '7/16/2026', qty: 600, vendor: 'CONRADO' }], daily: { 1: 1, 4: 4 }, ending: 392, monthly: 5, weekly: [5, 0, 0, 0, 0] },
+]
+const sampleMhmapRows = [
+  { no: 1, name: 'Carbamazepine 200mg tablet', expiry: '', lot: 'PH21-79\n20072773', beginning: 0, deliveries: [{ date: '7/10/2025', qty: 100, vendor: 'NO PAPERS' }, { date: '12/12/2025', qty: 100, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 2, name: 'Chlorpromazine HCl 200mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 3, name: 'Clozapine 100mg tablet', expiry: '2/1/2027', lot: 'B344K015', beginning: 0, deliveries: [{ date: '5/19/2025', qty: 100, vendor: '' }, { date: '11/30/2025', qty: 550, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 4, name: 'Diphenhydramine HCl 50mg/ml, 1ml ampule', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 5, name: 'Donepezil HCl 10mg tablet', expiry: '07/01/2027', lot: 'BZ01K010', beginning: 100, deliveries: [{ date: '12/15/2025', qty: 100, vendor: 'DOHCLCHD' }], daily: {}, ending: 100, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 6, name: 'Escitalopram oxalate 10mg tablet', expiry: '', lot: '', beginning: 73, deliveries: [], daily: {}, ending: 73, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 7, name: 'Fluoxetine 20mg capsule', expiry: '2/1/2027', lot: 'PH-2519', beginning: 0, deliveries: [{ date: '3/10/2026', qty: 150, vendor: 'DOHCLHD' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 8, name: 'Fluphenazine Decanoate 25mg/ml, 1ml amp', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 9, name: 'Haloperidol 5mg tablet', expiry: '11/30/2027', lot: 'CFB24004', beginning: 88, deliveries: [{ date: '7/15/2026', qty: 100, vendor: 'BPHO' }], daily: {}, ending: 88, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 10, name: 'Haloperidol 5mg/ml 1ml solution for injection ampule', expiry: '11/30/2027', lot: '243532', beginning: 3, deliveries: [{ date: '7/15/2026', qty: 3, vendor: 'BPHO' }], daily: {}, ending: 3, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 11, name: 'Lamotrigine 100mg tablet', expiry: '12/2028', lot: 'B662L006', beginning: 90, deliveries: [{ date: '12/15/2025', qty: 90, vendor: 'DOHCLCHD' }], daily: {}, ending: 90, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 12, name: 'Lithium Carbonate 450mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 13, name: 'Memantine HCl 10mg tablet', expiry: '05/31/2027', lot: 'BDMGL004\nHYT2402', beginning: 0, deliveries: [{ date: '12/15/2025', qty: 290, vendor: 'DOHCLCHD' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 14, name: 'Olanzapine HCl 10mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 15, name: 'Quetiapine fumarate 200mg tablet', expiry: '9/1/2026', lot: 'BUX2303', beginning: 0, deliveries: [{ date: '6/5/2026', qty: 300, vendor: 'NCMH' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 16, name: 'Risperidone 2mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 17, name: 'Sertraline 50mg tablet', expiry: '10/2026', lot: '', beginning: 0, deliveries: [{ date: '7/15/2026', qty: 631, vendor: 'BPHO' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 18, name: 'Valproic acid 250mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 19, name: 'Valproic acid 500mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+  { no: 20, name: 'Valproic acid 250mg/5ml syrup, 120ml bottle', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
+]
+
+function MonthlyStockCard({ rows, periodLabels, regular = false, monthLabel = 'November 2026' }) {
+  const days = Array.from({ length: 31 }, (_, index) => index + 1)
+  return (
+    <div className="ledger-scroll" role="region" aria-label={`${regular ? 'Regular' : 'Donation'} inventory monthly stock card, scroll horizontally to view all columns`} tabIndex="0">
+      <table className={`ledger-table ${regular ? 'regular-grid-table' : 'donation-grid-table'}`}>
+        <thead>
+          <tr>
+            <th rowSpan="2" className="ledger-num sticky-num">#</th><th rowSpan="2" className="ledger-item sticky-item">ITEMS</th>
+            {regular && <><th rowSpan="2" className="ledger-unit">UNIT OF<br />MEASURE</th><th rowSpan="2" className="ledger-price">UNIT<br />PRICE</th><th rowSpan="2" className="ledger-price">DPRI<br />PRICE</th><th rowSpan="2" className="ledger-category">CATEGORY</th><th rowSpan="2" className="ledger-other">OTHER CATEGORY<br />(MOBCHA, YAKAP)</th></>}
+            <th rowSpan="2" className="ledger-expiry">EXPIRY<br />DATE</th><th rowSpan="2" className="ledger-lot">LOT<br />NUMBER</th><th rowSpan="2" className="ledger-beginning">BEGINNING<br />BALANCE</th><th rowSpan="2" className="ledger-delivery">DELIVERY<br />DATE</th><th rowSpan="2" className="ledger-qty">QTY<br />DELIVERED</th>
+            <th colSpan={regular ? 32 : 31} className="ledger-month">{monthLabel.toUpperCase()}</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
+          </tr>
+          <tr>
+            {(regular ? days.slice(0, 3) : days).map((day) => <th className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{day}</th>)}
+            {regular && <th className="ledger-return">SL<br />RET</th>}
+            {regular && days.slice(3).map((day) => <th className="ledger-day" key={day}>{day}</th>)}
+            {periodLabels.map((range) => <th className="ledger-week" key={range}>{range}</th>)}
+          </tr>
+        </thead>
+        <tbody>{rows.map((item) => <tr key={item.no}>
+          <td className="ledger-num sticky-num">{item.no}</td><td className="ledger-item sticky-item">{item.name}</td>
+          {regular && <><td className="ledger-unit">{item.unit}</td><td className="ledger-price">{item.price}</td><td className="ledger-price">{item.dpri}</td><td className="ledger-category">{item.category}</td><td className="ledger-other">{item.other}</td></>}
+          <td className="ledger-expiry">{item.expiry}</td><td className="ledger-lot">{item.lot}</td><td className="ledger-beginning">{item.beginning}</td>
+          <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>
+          {regular && <>{days.slice(0, 3).map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}<td className="ledger-return">{item.daily.return || ''}</td>{days.slice(3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}</>}
+          {!regular && days.map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}
+          <td className={`ledger-ending ${item.ending < 0 ? 'ledger-negative' : ''}`}>{item.ending}</td><td className="ledger-month-total">{item.monthly}</td>{item.weekly.map((count, index) => <td className="ledger-week" key={periodLabels[index]}>{count}</td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+  )
+}
+
+
+const sampleActivity = [
+  { action: 'Stock received', item: 'Paracetamol 500 mg', detail: 'Added 24 boxes', time: 'Today, 9:42 AM', mark: '+' },
+  { action: 'Low stock alert', item: 'Cetirizine 10 mg', detail: '9 boxes remaining', time: 'Today, 8:15 AM', mark: '!' },
+  { action: 'Stock issued', item: 'Omeprazole 20 mg', detail: 'Issued 6 boxes', time: 'Yesterday, 4:30 PM', mark: 'âˆ’' },
+]
+
+function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
+  const [stockMenuOpen, setStockMenuOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
+  const [activeSection, setActiveSection] = useState(getSavedDashboardSection)
+  const [stockMonth, setStockMonth] = useState('2026-11')
+  const [stockYear, stockMonthNumber] = stockMonth.split('-').map(Number)
+  const stockMonthLabel = new Date(stockYear, stockMonthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  function navigateToSection(section) {
+    setActiveSection(section)
+    if (window.innerWidth <= 760) setSidebarOpen(false)
+  }
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem('pharma-dashboard-section', activeSection)
+    } catch {
+      // Keep navigation usable when browser storage is unavailable.
+    }
+  }, [activeSection])
+
+  const sectionTitles = {
+    overview: 'Dashboard',
+    regular: 'Regular inventory',
+    donation: 'Donation inventory',
+    mhmap: 'MHMAP inventory',
+    'monthly-consumption': 'Monthly Consumption',
+    inventory: 'Inventory',
+    'rpci-regular': 'RPCI Regular',
+    'rpci-donation': 'RPCI Donation',
+    'user-management': 'User Management',
+  }
+  const sectionTitle = sectionTitles[activeSection] || 'Dashboard'
+
+  return (
+    <main className={`dashboard-shell ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      {sidebarOpen && <button className="sidebar-backdrop" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`dashboard-sidebar ${sidebarOpen ? 'is-open' : ''}`} id="admin-sidebar" aria-label="Workspace sidebar">
+        <div className="sidebar-brand-row">
+          <a className="brand dashboard-brand" href="/" aria-label="JVGH Pharmacy home">
+            <span className="brand-mark" aria-hidden="true">+</span>
+            <span>JVGH <strong>PHARMACY</strong></span>
+          </a>
+          <button className="sidebar-toggle" type="button" aria-label={sidebarOpen ? 'Collapse sidebar to icons' : 'Expand sidebar'} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen((open) => !open)}><span /><span /><span /></button>
+          <button className="sidebar-mobile-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg></button>
+        </div>
+        <p className="sidebar-caption">WORKSPACE</p>
+        <nav className="sidebar-nav" aria-label="Admin navigation">
+          <button className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`} title="Overview" type="button" onClick={() => navigateToSection('overview')}><SidebarIcon name="overview" /><span className="sidebar-label">Overview</span></button>
+          <div className={`sidebar-group ${stockMenuOpen ? 'is-open' : ''}`}>
+            <button className="sidebar-link sidebar-parent" type="button" aria-expanded={stockMenuOpen} onClick={() => setStockMenuOpen((open) => !open)}>
+              <SidebarIcon name="estock" /><span className="sidebar-label">E-STOCK</span><svg className="sidebar-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5" /></svg>
+            </button>
+            {stockMenuOpen && <div className="sidebar-submenu">
+              <button className={`sidebar-sublink ${activeSection === 'regular' ? 'active' : ''}`} title="Regular" type="button" onClick={() => navigateToSection('regular')}><span className="sidebar-submenu-icon">R</span><span className="sidebar-sublink-label">Regular</span></button>
+              <button className={`sidebar-sublink ${activeSection === 'donation' ? 'active' : ''}`} title="Donation" type="button" onClick={() => navigateToSection('donation')}><span className="sidebar-submenu-icon">D</span><span className="sidebar-sublink-label">Donation</span></button>
+              <button className={`sidebar-sublink ${activeSection === 'mhmap' ? 'active' : ''}`} title="MHMAP" type="button" onClick={() => navigateToSection('mhmap')}><span className="sidebar-submenu-icon">M</span><span className="sidebar-sublink-label">MHMAP</span></button>
+            </div>}
+          </div>
+          <button className={`sidebar-link ${activeSection === 'monthly-consumption' ? 'active' : ''}`} title="Monthly Consumption" type="button" onClick={() => navigateToSection('monthly-consumption')}><SidebarIcon name="monthly" /><span className="sidebar-label">Monthly Consumption</span></button>
+          <button className={`sidebar-link ${activeSection === 'inventory' ? 'active' : ''}`} title="Inventory" type="button" onClick={() => navigateToSection('inventory')}><SidebarIcon name="inventory" /><span className="sidebar-label">Inventory</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-regular' ? 'active' : ''}`} title="RPCI Regular" type="button" onClick={() => navigateToSection('rpci-regular')}><SidebarIcon name="rpci" /><span className="sidebar-label">RPCI Regular</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-donation' ? 'active' : ''}`} title="RPCI Donation" type="button" onClick={() => navigateToSection('rpci-donation')}><SidebarIcon name="rpci" /><span className="sidebar-label">RPCI Donation</span></button>
+          <button className={`sidebar-link ${activeSection === 'user-management' ? 'active' : ''}`} title="User Management" type="button" onClick={() => navigateToSection('user-management')}><SidebarIcon name="users" /><span className="sidebar-label">User Management</span></button>
+          <a className="sidebar-link" title="Stock movements" href="#activity"><SidebarIcon name="movement" /><span className="sidebar-label">Stock movements</span><small>Sample</small></a>
+          <a className="sidebar-link" title="Reports" href="#reports"><SidebarIcon name="reports" /><span className="sidebar-label">Reports</span><small>Sample</small></a>
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-user-mark">{user.fullName?.charAt(0)?.toUpperCase() || 'A'}</div>
+          <div className="sidebar-user-info"><strong>{user.fullName}</strong><span>Administrator</span></div>
+          <button className="sidebar-logout" type="button" onClick={onLogout} disabled={submitting} aria-label="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
+        </div>
+      </aside>
+
+      <section className="dashboard-main" id="overview">
+        <header className="dashboard-header">
+          <div className="dashboard-title-group"><div><p className="eyebrow">PHARMACY INVENTORY SYSTEM</p><h1>{sectionTitle}</h1></div></div>
+          <div className="dashboard-header-actions"><span className="sample-indicator"><i /> Sample data</span><button className="text-button" type="button" onClick={onLogout} disabled={submitting}>{submitting ? 'Signing outâ€¦' : 'Sign out'}</button></div>
+        </header>
+
+        {activeSection === 'overview' && <>
+        <div className="dashboard-welcome"><div><h2>Good day, {user.fullName?.split(' ')[0] || 'Admin'}</h2><p>Hereâ€™s whatâ€™s happening with your pharmacy today.</p></div><span className="dashboard-date">JVGH PHARMACY Â· ADMIN</span></div>
+
+        <section className="metric-grid" aria-label="Sample inventory summary">
+          <article className="metric-card"><div className="metric-label">TOTAL MEDICINES <span className="metric-icon green">â–¤</span></div><strong>248</strong><p><span className="metric-positive">+12</span> this month</p></article>
+          <article className="metric-card"><div className="metric-label">LOW STOCK ITEMS <span className="metric-icon amber">!</span></div><strong>08</strong><p><span className="metric-warning">Needs attention</span></p></article>
+          <article className="metric-card"><div className="metric-label">EXPIRING SOON <span className="metric-icon blue">â—·</span></div><strong>03</strong><p>Within the next 90 days</p></article>
+          <article className="metric-card"><div className="metric-label">STOCK MOVEMENTS <span className="metric-icon violet">â†—</span></div><strong>36</strong><p>Recorded this month</p></article>
+        </section>
+
+        <div className="dashboard-content-grid">
+          <section className="dashboard-card movement-card" id="reports">
+            <div className="card-heading"><div><h2>Stock movement</h2><p>Sample activity this week</p></div><span className="period-chip">This weekâŒ„</span></div>
+            <div className="chart-total"><strong>126</strong><span>items moved</span></div>
+            <div className="movement-chart" role="img" aria-label="Sample stock movement chart for Monday through Sunday">{[{d:'Mon',a:46,b:25},{d:'Tue',a:64,b:38},{d:'Wed',a:42,b:52},{d:'Thu',a:77,b:37},{d:'Fri',a:59,b:49},{d:'Sat',a:35,b:22},{d:'Sun',a:26,b:16}].map((day) => <div className="chart-day" key={day.d}><div className="chart-bars"><i style={{height:`${day.a}%`}}/><i style={{height:`${day.b}%`}}/></div><span>{day.d}</span></div>)}</div>
+            <div className="chart-legend"><span><i className="legend-in"/>Stock received</span><span><i className="legend-out"/>Stock issued</span></div>
+          </section>
+
+          <section className="dashboard-card activity-card" id="activity">
+            <div className="card-heading"><div><h2>Recent activity</h2><p>Latest sample stock updates</p></div><a href="#activity">View all <span>â†’</span></a></div>
+            <div className="activity-list">{sampleActivity.map((item) => <article className="activity-row" key={`${item.action}-${item.item}`}><span className={`activity-mark ${item.mark === '!' ? 'activity-alert' : ''}`}>{item.mark}</span><div className="activity-copy"><strong>{item.action}</strong><span>{item.item} Â· {item.detail}</span></div><time>{item.time}</time></article>)}</div>
+          </section>
+
+          <section className="dashboard-card team-card" id="team">
+            <div className="card-heading"><div><h2>Team access</h2><p>Sample workspace summary</p></div><span className="team-icon">â™™</span></div>
+            <div className="team-total"><strong>06</strong><span>active staff accounts</span></div>
+            <div className="team-roles"><span>Admin <b>1</b></span><span>Pharmacist <b>5</b></span></div>
+            <a className="team-link" href="#team">Manage users <span>â†’</span></a>
+          </section>
+        </div>
+        <footer className="dashboard-footer">Dashboard preview Â· All inventory and activity figures shown are sample data.</footer>
+        </>}
+
+        {activeSection === 'regular' && <div className="section-page-content">
+          <section className="dashboard-card regular-ledger-card" id="regular">
+            <div className="ledger-heading">
+              <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular inventory</h2><p>Monthly stock card Â· {stockMonthLabel}</p></div>
+              <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={setStockMonth} /></div>
+            </div>
+            <div className="ledger-hint"><span>â†”</span> Swipe or scroll horizontally to view all stock-card columns</div>
+            <MonthlyStockCard rows={sampleRegularRows} periodLabels={weeklyRanges} regular monthLabel={stockMonthLabel} />
+          </section>
+        </div>}
+
+        {activeSection === 'donation' && <div className="section-page-content">
+          <section className="dashboard-card regular-ledger-card" id="donation">
+            <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / DONATION</span><h2>Donation inventory</h2><p>Monthly stock card Â· {stockMonthLabel}</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={setStockMonth} /></div></div>
+            <div className="ledger-hint"><span>â†”</span> Swipe or scroll horizontally to view all stock-card columns</div>
+            <MonthlyStockCard rows={sampleDonationRows} periodLabels={donationWeeklyRanges} monthLabel={stockMonthLabel} />
+          </section>
+        </div>}
+
+        {activeSection === 'mhmap' && <div className="section-page-content">
+          <section className="dashboard-card regular-ledger-card">
+            <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card Â· {stockMonthLabel}</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={setStockMonth} /></div></div>
+            <div className="ledger-hint"><span>â†”</span> Swipe or scroll horizontally to view all stock-card columns</div>
+            <MonthlyStockCard rows={sampleMhmapRows} periodLabels={donationWeeklyRanges} monthLabel={stockMonthLabel} />
+          </section>
+        </div>}
+
+        {activeSection === 'user-management' && <UserManagement csrfToken={csrfToken} />}
+
+        {['monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation'].includes(activeSection) && <div className="section-page-content">
+          <section className="dashboard-card estock-other-card">
+            <div className="card-heading"><div><span className="ledger-kicker">E-STOCK / SAMPLE VIEW</span><h2>{sectionTitle}</h2><p>UI preview</p></div><span className="section-pill">SAMPLE</span></div>
+            <p className="section-preview">{sectionTitle} page layout will appear here. This menu is connected to the sample navigation only for now.</p>
+          </section>
+        </div>}
+      </section>
+    </main>
+  )
+}
+
+export default function App() {
+  const [auth, setAuth] = useState({ status: 'loading', user: null, csrfToken: '' })
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function loadSession() {
+    setError('')
+    setAuth((current) => ({ ...current, status: 'loading' }))
+
+    try {
+      const session = await requestJson('/api/auth/session.php')
+      setAuth({ status: 'ready', user: session.user, csrfToken: session.csrfToken })
+    } catch (requestError) {
+      setAuth({ status: 'error', user: null, csrfToken: '' })
+      setError(requestError.message || 'Could not connect to the PHP API.')
+    }
+  }
+
+  useEffect(() => {
+    let active = true
+
+    requestJson('/api/auth/session.php')
+      .then((session) => {
+        if (active) {
+          setAuth({ status: 'ready', user: session.user, csrfToken: session.csrfToken })
+        }
+      })
+      .catch((requestError) => {
+        if (active) {
+          setAuth({ status: 'error', user: null, csrfToken: '' })
+          setError(requestError.message || 'Could not connect to the PHP API.')
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function handleLogin(event) {
+    event.preventDefault()
+    setError('')
+    setSubmitting(true)
+
+    try {
+      const result = await requestJson('/api/auth/login.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': auth.csrfToken,
+        },
+        body: JSON.stringify({ username, password }),
+      })
+      setAuth({ status: 'ready', user: result.user, csrfToken: result.csrfToken })
+      setPassword('')
+    } catch (requestError) {
+      setError(requestError.message || 'Login failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleLogout() {
+    setError('')
+    setSubmitting(true)
+
+    try {
+      const result = await requestJson('/api/auth/logout.php', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': auth.csrfToken },
+      })
+      try {
+        window.sessionStorage.removeItem('pharma-dashboard-section')
+      } catch {
+        // Ignore storage cleanup failures during sign out.
+      }
+      setAuth({ status: 'ready', user: null, csrfToken: result.csrfToken })
+      setPassword('')
+    } catch (requestError) {
+      setError(requestError.message || 'Could not sign out. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (auth.status === 'loading') {
+    return (
+      <main className="page-shell">
+        <div className="loading-card" role="status">Connecting to JVGH Pharmacyâ€¦</div>
+      </main>
+    )
+  }
+
+  if (auth.user) {
+    const roles = auth.user.roles || []
+    const isAdmin = roles.includes('admin')
+
+    if (isAdmin) {
+      return <AdminDashboard user={auth.user} csrfToken={auth.csrfToken} onLogout={handleLogout} submitting={submitting} />
+    }
+
+    return (
+      <main className="page-shell">
+        <header className="topbar">
+          <a className="brand" href="/" aria-label="JVGH Pharmacy home">
+            <span className="brand-mark" aria-hidden="true">+</span>
+            <span>JVGH <strong>PHARMACY</strong></span>
+          </a>
+          <button className="text-button" type="button" onClick={handleLogout} disabled={submitting}>
+            {submitting ? 'Signing outâ€¦' : 'Sign out'}
+          </button>
+        </header>
+
+        <section className="welcome-panel">
+          <div className="welcome-copy">
+            <p className="eyebrow">PHARMACY INVENTORY SYSTEM</p>
+            <h1>Welcome, {auth.user.fullName}</h1>
+            <p className="welcome-description">
+              You are signed in. Your account role determines which pharmacy tools you can use.
+            </p>
+          </div>
+          <div className="role-card">
+            <span className="role-card-label">SIGNED IN AS</span>
+            <div className="role-list">
+              {roles.map((role) => <span className="role-badge" key={role}>{roleTitle(role)}</span>)}
+            </div>
+            <p>{auth.user.username}</p>
+          </div>
+        </section>
+
+        <section className="next-step-card">
+          <div className="next-step-icon" aria-hidden="true">âœ“</div>
+          <div>
+            <h2>{isAdmin ? 'Administrator access' : 'Pharmacist access'}</h2>
+            <p>
+              {isAdmin
+                ? 'Admin accounts are intended to manage users and the pharmacy system.'
+                : 'Pharmacist accounts are intended to work with inventory and stock cards, without user management.'}
+            </p>
+            <p className="module-note">Login and role recognition are ready. Inventory and user-management screens are next.</p>
+          </div>
+        </section>
+
+        {error && <p className="form-message form-message-error" role="alert">{error}</p>}
+      </main>
+    )
+  }
+
+  return (
+    <main className="page-shell login-layout">
+      <section className="login-intro" aria-label="Pharmacy inventory system">
+        <a className="brand" href="/" aria-label="JVGH Pharmacy home">
+          <span className="brand-mark" aria-hidden="true">+</span>
+          <span>JVGH <strong>PHARMACY</strong></span>
+        </a>
+        <div className="intro-copy">
+          <p className="eyebrow">PHARMACY INVENTORY SYSTEM</p>
+          <h1>Better visibility for every stock movement.</h1>
+          <p>Sign in to continue to the pharmacy inventory workspace.</p>
+        </div>
+        <div className="intro-footer">Secure access for authorized pharmacy staff</div>
+      </section>
+
+      <section className="login-panel">
+        <div className="login-heading">
+          <p className="eyebrow">WELCOME BACK</p>
+          <h2>Sign in to your account</h2>
+          <p>Use the username and password assigned to you.</p>
+        </div>
+
+        {error && <p className="form-message form-message-error" role="alert">{error}</p>}
+
+        {auth.status === 'error' && (
+          <button className="text-button retry-button" type="button" onClick={loadSession}>
+            Retry connection
+          </button>
+        )}
+
+        <form className="login-form" onSubmit={handleLogin}>
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            required
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+          />
+
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+
+          <button className="submit-button" type="submit" disabled={submitting || !auth.csrfToken}>
+            {submitting ? 'Signing inâ€¦' : 'Sign in'}
+          </button>
+        </form>
+
+        <p className="login-note">Access is managed by your pharmacy system administrator.</p>
+      </section>
+    </main>
+  )
+}
+
+
+
