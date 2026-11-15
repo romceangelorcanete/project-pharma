@@ -43,3 +43,21 @@ Donation and MHMAP page recovery - November 15, 2026
 - Updated the requested backup TXT with the restored page and dashboard source, styles, and components; preserved the earlier backup content.
 - Confirmed `npm run build` completed successfully.
 - No database changes; Donation and MHMAP continue to use sample inventory data.
+
+Donation and MHMAP search - November 15, 2026
+- Added a Search Items field to Donation and MHMAP, matching the Regular search control and filtering sample rows by item name as the user types.
+- Added an empty-results message when no item names match.
+
+Dashboard page URLs - November 15, 2026
+- Added path-based navigation for Dashboard and workspace pages (for example, /dashboard, /regular, /donation, and /mhmap).
+- Browser Back and Forward update both the URL and the visible dashboard section.
+
+User Management edit URL - November 15, 2026
+- Edit actions open the selected account at /user-management/{id}/edit while keeping the existing edit form.
+- Directly opening an edit URL loads the matching account and opens the edit form.
+- Browser Back and form close return to /user-management; Browser Forward restores the edit URL and form.
+- User Management continues using the existing PHP API and pharma_inventory database.
+
+User Management Add user icon - November 15, 2026
+- Replaced the text plus character with a consistently rendered inline SVG icon.
+- Adjusted button layout and icon spacing.

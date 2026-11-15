@@ -88,6 +88,16 @@ function SidebarIcon({ name }) {
 }
 
 function getSavedDashboardSection() {
+  const pathSegments = window.location.pathname.split("/").filter(Boolean);
+  if (pathSegments[0] === "user-management") return "user-management";
+  const pathSection = pathSegments.at(-1);
+  if (pathSection === "dashboard") return "overview";
+  if (dashboardSectionKeys.includes(pathSection)) return pathSection;
+
+  const hashSection = window.location.hash.slice(1);
+  if (dashboardSectionKeys.includes(hashSection)) return hashSection;
+  if (["reports", "activity", "team"].includes(hashSection)) return "overview";
+
   try {
     const savedSection = window.sessionStorage.getItem(
       "pharma-dashboard-section",
@@ -146,8 +156,33 @@ export default function AdminDashboard({
   ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   function navigateToSection(section) {
     setActiveSection(section);
+    const route = section === "overview" ? "/dashboard" : `/${section}`;
+    window.history.pushState({ section }, "", route);
     if (window.innerWidth <= 760) setSidebarOpen(false);
   }
+
+  useEffect(() => {
+    const currentRoute =
+      activeSection === "overview" ? "/dashboard" : `/${activeSection}`;
+    if (window.location.pathname === "/" || window.location.hash) {
+      window.history.replaceState({ section: activeSection }, "", currentRoute);
+    } else {
+      window.history.replaceState(
+        { ...window.history.state, section: activeSection },
+        "",
+      );
+    }
+
+    function handlePopState(event) {
+      const section = dashboardSectionKeys.includes(event.state?.section)
+        ? event.state.section
+        : getSavedDashboardSection();
+      setActiveSection(section);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     try {

@@ -1,5 +1,5 @@
 ﻿LATEST UI BACKUP - 2026-11-15
-Includes Donation and MHMAP Search Items controls, month label fix, and page styles. Inventory rows remain sample UI; database unchanged.
+Includes dashboard routes, User Management edit URL, corrected Add user label, Donation/MHMAP Search Items, and inventory page styles. Inventory rows remain sample UI; database schema unchanged.
 
 ===== src/pages/AdminDashboard.jsx =====
 import { useEffect, useState } from "react";
@@ -92,6 +92,16 @@ function SidebarIcon({ name }) {
 }
 
 function getSavedDashboardSection() {
+  const pathSegments = window.location.pathname.split("/").filter(Boolean);
+  if (pathSegments[0] === "user-management") return "user-management";
+  const pathSection = pathSegments.at(-1);
+  if (pathSection === "dashboard") return "overview";
+  if (dashboardSectionKeys.includes(pathSection)) return pathSection;
+
+  const hashSection = window.location.hash.slice(1);
+  if (dashboardSectionKeys.includes(hashSection)) return hashSection;
+  if (["reports", "activity", "team"].includes(hashSection)) return "overview";
+
   try {
     const savedSection = window.sessionStorage.getItem(
       "pharma-dashboard-section",
@@ -150,8 +160,33 @@ export default function AdminDashboard({
   ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   function navigateToSection(section) {
     setActiveSection(section);
+    const route = section === "overview" ? "/dashboard" : `/${section}`;
+    window.history.pushState({ section }, "", route);
     if (window.innerWidth <= 760) setSidebarOpen(false);
   }
+
+  useEffect(() => {
+    const currentRoute =
+      activeSection === "overview" ? "/dashboard" : `/${activeSection}`;
+    if (window.location.pathname === "/" || window.location.hash) {
+      window.history.replaceState({ section: activeSection }, "", currentRoute);
+    } else {
+      window.history.replaceState(
+        { ...window.history.state, section: activeSection },
+        "",
+      );
+    }
+
+    function handlePopState(event) {
+      const section = dashboardSectionKeys.includes(event.state?.section)
+        ? event.state.section
+        : getSavedDashboardSection();
+      setActiveSection(section);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     try {
@@ -616,6 +651,244 @@ export default function AdminDashboard({
       </section>
     </main>
   );
+}
+
+
+===== src/pages/UserManagement.jsx =====
+import { useEffect, useState } from 'react'
+import { requestJson, roleTitle } from '../services/api.js'
+import './UserManagement.css'
+
+function getEditUserIdFromPath() {
+  const match = window.location.pathname.match(/^\/user-management\/([^/]+)\/edit\/?$/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+export default function UserManagement({ csrfToken }) {
+  const [users, setUsers] = useState([])
+  const [selectedId, setSelectedId] = useState(null)
+  const [editingUser, setEditingUser] = useState(null)
+  const [userFormOpen, setUserFormOpen] = useState(false)
+  const [form, setForm] = useState({ fullName: '', username: '', password: '', role: 'pharmacist', isActive: true })
+  const [formError, setFormError] = useState('')
+  const [loadError, setLoadError] = useState('')
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const [savingUser, setSavingUser] = useState(false)
+  const [routeEditUserId, setRouteEditUserId] = useState(getEditUserIdFromPath)
+
+  async function loadUsers() {
+    setLoadingUsers(true)
+    setLoadError('')
+    try {
+      const result = await requestJson('/api/users/index.php')
+      setUsers(result.users || [])
+    } catch (error) {
+      setLoadError(error.message || 'Could not load users.')
+    } finally {
+      setLoadingUsers(false)
+    }
+  }
+
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  useEffect(() => {
+    function syncEditRoute() {
+      setRouteEditUserId(getEditUserIdFromPath())
+    }
+    window.addEventListener('popstate', syncEditRoute)
+    return () => window.removeEventListener('popstate', syncEditRoute)
+  }, [])
+
+  useEffect(() => {
+    if (!routeEditUserId) {
+      setUserFormOpen(false)
+      setEditingUser(null)
+      return
+    }
+    const user = users.find((entry) => String(entry.id) === routeEditUserId)
+    if (user) openForm(user)
+  }, [routeEditUserId, users])
+
+  function openForm(user = null) {
+    setEditingUser(user)
+    setUserFormOpen(true)
+    setForm(user
+      ? { fullName: user.fullName, username: user.username, password: '', role: user.role, isActive: user.isActive }
+      : { fullName: '', username: '', password: '', role: 'pharmacist', isActive: true })
+    setFormError('')
+  }
+
+  function openEditRoute(user) {
+    const userId = String(user.id)
+    window.history.pushState(
+      { ...(window.history.state || {}), section: 'user-management', editUserId: userId },
+      '',
+      `/user-management/${encodeURIComponent(userId)}/edit`,
+    )
+    setRouteEditUserId(userId)
+    openForm(user)
+  }
+
+  function closeForm() {
+    if (routeEditUserId) {
+      if (window.history.state?.editUserId === routeEditUserId) {
+        window.history.back()
+      } else {
+        window.history.replaceState({ section: 'user-management' }, '', '/user-management')
+      }
+      setRouteEditUserId(null)
+    }
+    setUserFormOpen(false)
+    setEditingUser(null)
+  }
+
+  async function saveUser(event) {
+    event.preventDefault()
+    setFormError('')
+    if (!form.fullName.trim() || !form.username.trim()) {
+      setFormError('Enter the userâ€™s full name and username.')
+      return
+    }
+    if ((!editingUser || form.password) && form.password.length < 8) {
+      setFormError('Password must be at least 8 characters.')
+      return
+    }
+
+    setSavingUser(true)
+    try {
+      const payload = { fullName: form.fullName.trim(), username: form.username.trim(), role: form.role, isActive: form.isActive }
+      if (form.password) payload.password = form.password
+      const result = await requestJson(editingUser ? '/api/users/update.php' : '/api/users/create.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify(editingUser ? { ...payload, id: editingUser.id } : payload),
+      })
+      closeForm()
+      if (!editingUser && result.user) setSelectedId(result.user.id)
+      await loadUsers()
+    } catch (error) {
+      setFormError(error.message || 'Could not save the user account.')
+    } finally {
+      setSavingUser(false)
+    }
+  }
+
+  async function deleteUser(user) {
+    if (!window.confirm(`Delete ${user.fullName} (${user.username})?`)) return
+    try {
+      await requestJson('/api/users/delete.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ id: user.id }),
+      })
+      if (selectedId === user.id) setSelectedId(null)
+      await loadUsers()
+    } catch (error) {
+      setLoadError(error.message || 'Could not delete the user account.')
+    }
+  }
+
+  return (
+    <div className="section-page-content user-management-page">
+      <div className="user-page-heading"><div><span className="ledger-kicker">WORKSPACE / USER MANAGEMENT</span><h2>Users and roles</h2><p>Manage staff accounts and their assigned access.</p></div><button className="add-user-button" type="button" onClick={() => openForm()}>+ Add user</button></div>
+      <div className="user-summary-row"><article><span>ALL USERS</span><strong>{users.length.toString().padStart(2, '0')}</strong></article><article><span>ADMINS</span><strong>{users.filter((user) => user.role === 'admin').length.toString().padStart(2, '0')}</strong></article><article><span>PHARMACISTS</span><strong>{users.filter((user) => user.role === 'pharmacist').length.toString().padStart(2, '0')}</strong></article></div>
+      <section className="dashboard-card users-table-card">
+        <div className="users-table-heading"><div><h3>Staff accounts</h3><p>Select a row to highlight an account. Passwords are never displayed.</p></div><span className="section-pill">PHARMA_INVENTORY</span></div>
+        {loadError && <p className="users-load-error" role="alert">{loadError}</p>}
+        <div className="users-table-scroll"><table className="users-table"><thead><tr><th>USER ID</th><th>FULL NAME</th><th>USERNAME</th><th>ROLE</th><th>STATUS</th><th>CREATED AT</th><th className="users-actions-heading">ACTIONS</th></tr></thead><tbody>
+          {users.map((user) => <tr key={user.id} className={selectedId === user.id ? 'selected-user-row' : ''} aria-selected={selectedId === user.id} onClick={() => setSelectedId(user.id)} tabIndex="0" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedId(user.id) }}>
+            <td className="user-id-cell">{user.id.toString().padStart(3, '0')}</td><td><strong className="user-full-name">{user.fullName}</strong></td><td className="username-cell">{user.username}</td><td><span className={`user-role-badge ${user.role === 'admin' ? 'admin-role' : 'pharmacist-role'}`}>{roleTitle(user.role)}</span></td><td><span className={`user-status ${user.isActive ? 'user-active' : 'user-inactive'}`}><i />{user.isActive ? 'Active' : 'Inactive'}</span></td><td className="user-created-cell">{user.createdAt ? new Date(user.createdAt.replace(' ', 'T')).toLocaleDateString() : 'â€”'}</td><td><div className="user-row-actions"><button type="button" onClick={(event) => { event.stopPropagation(); openEditRoute(user) }}>Edit</button><button type="button" className="delete-user-action" onClick={(event) => { event.stopPropagation(); deleteUser(user) }}>Delete</button></div></td>
+          </tr>)}
+          {loadingUsers && <tr><td className="users-empty-state" colSpan="7">Loading user accountsâ€¦</td></tr>}
+          {!loadingUsers && users.length === 0 && <tr><td className="users-empty-state" colSpan="7">No user accounts found. Add a user to get started.</td></tr>}
+        </tbody></table></div>
+        <div className="users-table-footer">{selectedId ? `Selected user ID ${selectedId}` : 'Select a user row to highlight it'}<span>Showing {users.length} account{users.length === 1 ? '' : 's'}</span></div>
+      </section>
+
+      {userFormOpen && <div className="user-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm() }}>
+        <section className="user-modal" role="dialog" aria-modal="true" aria-labelledby="user-form-title">
+          <div className="user-modal-heading"><div><span className="ledger-kicker">USER ACCOUNT</span><h2 id="user-form-title">{editingUser ? 'Edit user' : 'Add user'}</h2></div></div>
+          <form className="user-form" onSubmit={saveUser}>
+            <label>Full name<input autoFocus value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} placeholder="e.g. Juan Dela Cruz" /></label>
+            <label>Username<input autoCapitalize="none" value={form.username} onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))} placeholder="e.g. juan.delacruz" /></label>
+            <label>{editingUser ? 'New password (optional)' : 'Password'}<input type="password" autoComplete="new-password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} placeholder={editingUser ? 'Leave blank to keep current password' : 'At least 8 characters'} /></label>
+            <label>Role<select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}><option value="admin">Admin</option><option value="pharmacist">Pharmacist</option></select></label>
+            <label className="user-active-toggle"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Active account</label>
+            {formError && <p className="user-form-error" role="alert">{formError}</p>}
+            <p className="user-form-note">Passwords are hashed before they are stored. The password is never displayed.</p>
+            <div className="user-form-actions"><button type="button" className="cancel-user-button" onClick={closeForm} disabled={savingUser}>Cancel</button><button type="submit" className="add-user-button" disabled={savingUser}>{savingUser ? 'Savingâ€¦' : editingUser ? 'Save changes' : 'Add user'}</button></div>
+          </form>
+        </section>
+      </div>}
+    </div>
+  )
+}
+
+
+
+===== src/pages/UserManagement.css =====
+.user-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.user-page-heading h2 { margin: 5px 0 0; color: #263c31; font-size: 21px; letter-spacing: -.03em; }
+.user-page-heading p, .users-table-heading p { margin: 6px 0 0; color: #87938b; font-size: 11px; }
+.add-user-button { min-height: 38px; padding: 0 14px; border: 1px solid #176345; border-radius: 8px; background: #176345; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; }
+.add-user-button:hover { background: #104e35; }
+.add-user-button:disabled, .cancel-user-button:disabled { cursor: wait; opacity: .65; }
+.user-summary-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.user-summary-row article { display: flex; align-items: center; justify-content: space-between; min-height: 73px; padding: 14px 17px; border: 1px solid #e6ebe7; border-radius: 10px; background: #fff; }
+.user-summary-row article span { color: #839087; font-size: 9px; font-weight: 800; letter-spacing: .07em; }
+.user-summary-row article strong { color: #2d4937; font-size: 23px; }
+.users-table-card { overflow: hidden; padding: 0; }
+.users-table-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; }
+.users-table-heading h3 { margin: 0; color: #32493a; font-size: 14px; }
+.users-load-error { margin: 0; padding: 11px 20px; border-top: 1px solid #f3d7d2; background: #fff7f5; color: #a44439; font-size: 11px; }
+.users-table-scroll { overflow-x: auto; border-top: 1px solid #edf1ee; }
+.users-table { width: 100%; min-width: 850px; table-layout: fixed; border-collapse: collapse; color: #526158; font-size: 11px; text-align: left; }
+.users-table th, .users-table td { padding: 13px 14px; border-bottom: 1px solid #edf1ee; vertical-align: middle; }
+.users-table th { background: #fafcfb; color: #849188; font-size: 9px; font-weight: 800; letter-spacing: .06em; }
+.users-table th:nth-child(1) { width: 9%; }.users-table th:nth-child(2) { width: 20%; }.users-table th:nth-child(3) { width: 17%; }.users-table th:nth-child(4) { width: 14%; }.users-table th:nth-child(5) { width: 12%; }.users-table th:nth-child(6) { width: 15%; }.users-table th:nth-child(7) { width: 180px; }
+.users-table tbody tr { cursor: pointer; transition: background 120ms ease; }
+.users-table tbody tr:hover { background: #f7faf7; }
+.users-table tbody tr.selected-user-row { background: #edf6f0; }
+.user-id-cell, .user-created-cell { color: #839087; font-size: 10px; }
+.user-full-name { color: #344b3b; font-size: 11px; }
+.username-cell { color: #64746a; }
+.user-role-badge { display: inline-block; padding: 5px 9px; border-radius: 999px; font-size: 9px; font-weight: 750; }
+.admin-role { background: #e9f1ff; color: #466a9e; }.pharmacist-role { background: #edf6ef; color: #3f7653; }
+.user-status { display: inline-flex; align-items: center; gap: 6px; color: #4f785c; font-size: 10px; }.user-status i { width: 7px; height: 7px; border-radius: 50%; background: #67a47b; }
+.user-inactive { color: #8e6861; }.user-inactive i { background: #c88173; }
+.users-actions-heading { text-align: right; }
+.user-row-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.user-row-actions button { min-height: 29px; padding: 0 10px; border: 1px solid #dce6df; border-radius: 6px; background: #fff; color: #3d6c4d; font-size: 10px; font-weight: 700; cursor: pointer; }
+.user-row-actions button:hover { background: #f1f7f2; }
+.user-row-actions .delete-user-action { border-color: #f0d8d4; color: #a54b40; }.user-row-actions .delete-user-action:hover { background: #fff5f3; }
+.users-table-footer { display: flex; justify-content: space-between; gap: 12px; padding: 12px 18px; color: #859188; font-size: 9px; }
+.users-empty-state { padding: 28px !important; color: #89958d; text-align: center; }
+.user-modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(20, 36, 27, .35); }
+.user-modal { width: min(460px, 100%); max-height: min(90vh, 760px); overflow-y: auto; padding: 22px; border: 1px solid #e3ebe5; border-radius: 14px; background: #fff; box-shadow: 0 22px 70px rgba(23, 54, 37, .2); }
+.user-modal-heading { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 1px solid #edf1ee; }
+.user-modal-heading h2 { margin: 5px 0 0; color: #2b4134; font-size: 19px; }
+.user-form { display: grid; gap: 13px; margin-top: 17px; }
+.user-form > label:not(.user-active-toggle) { display: grid; gap: 6px; color: #4e6255; font-size: 10px; font-weight: 700; }
+.user-form input:not([type="checkbox"]), .user-form select { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #dce5df; border-radius: 7px; background: #fbfdfb; color: #32463a; font-size: 11px; }
+.user-active-toggle { display: flex; align-items: center; gap: 8px; color: #566a5c; font-size: 11px; }
+.user-form-error { margin: 0; color: #ad493e; font-size: 10px; }
+.user-form-note { margin: 0; color: #89958d; font-size: 9px; }
+.user-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.cancel-user-button { min-height: 38px; padding: 0 13px; border: 1px solid #dce5df; border-radius: 8px; background: #fff; color: #5c6d62; font-size: 11px; font-weight: 650; cursor: pointer; }
+
+@media (max-width: 760px) {
+  .user-page-heading { align-items: flex-start; }
+  .user-page-heading h2 { font-size: 18px; }
+  .user-summary-row { gap: 7px; }
+  .user-summary-row article { min-height: 62px; padding: 10px; }
+  .user-summary-row article span { font-size: 7px; }
+  .user-summary-row article strong { font-size: 19px; }
+  .users-table-heading { padding: 14px; }
+  .users-table-heading p { max-width: 240px; line-height: 1.4; }
+  .users-table-footer { padding: 10px 13px; }
+  .user-modal { padding: 18px; }
 }
 
 
