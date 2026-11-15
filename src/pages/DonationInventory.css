@@ -1,2 +1,3 @@
 .donation-inventory-page .ledger-kicker { color: #4d8965; }
 .donation-inventory-page .ledger-heading h2 { color: #263c31; }
+.donation-inventory-page .donation-search-tools { grid-template-columns: minmax(220px, 420px); }

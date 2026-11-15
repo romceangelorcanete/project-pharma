@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
 import './DonationInventory.css'
@@ -11,6 +12,11 @@ const sampleDonationRows = [
 const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
 
 export default function DonationInventory({ stockMonth, onStockMonthChange, monthLabel }) {
+  const [search, setSearch] = useState('')
+  const visibleRows = sampleDonationRows.filter((item) =>
+    item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
+  )
+
   return (
     <div className="section-page-content donation-inventory-page">
       <section className="dashboard-card regular-ledger-card" id="donation">
@@ -18,9 +24,17 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
           <div><span className="ledger-kicker">E-STOCK / DONATION</span><h2>Donation inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
           <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
         </div>
+        <div className="regular-tools donation-search-tools" role="search" aria-label="Search Donation inventory items">
+          <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+        </div>
         <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
-        <MonthlyStockCard rows={sampleDonationRows} periodLabels={donationWeeklyRanges} monthLabel={monthLabel} />
+        {visibleRows.length === 0 && <p className="regular-empty-results">No items match your search.</p>}
+        <MonthlyStockCard rows={visibleRows} periodLabels={donationWeeklyRanges} monthLabel={monthLabel} />
       </section>
     </div>
   )
+}
+
+function SearchIcon() {
+  return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.7" cy="8.7" r="5.7" /><path d="m13 13 4 4" /></svg>
 }

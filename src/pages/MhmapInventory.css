@@ -1,2 +1,3 @@
 .mhmap-inventory-page .ledger-kicker { color: #4d8965; }
 .mhmap-inventory-page .ledger-heading h2 { color: #263c31; }
+.mhmap-inventory-page .mhmap-search-tools { grid-template-columns: minmax(220px, 420px); }
