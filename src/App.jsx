@@ -10,7 +10,46 @@ const sampleRegularRows = [
 
 const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
 const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+const monthShortNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const dashboardSectionKeys = ['overview', 'regular', 'donation', 'mhmap', 'monthly-consumption', 'inventory', 'rpci-regular', 'rpci-donation', 'user-management']
+
+function MonthPickerChevron() {
+  return <svg className="month-picker-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5" /></svg>
+}
+
+function MonthPickerArrow({ direction }) {
+  const path = direction === 'previous' ? 'm12 4-6 6 6 6' : 'm8 4 6 6-6 6'
+  return <svg className="month-picker-arrow-icon" viewBox="0 0 20 20" aria-hidden="true"><path d={path} /></svg>
+}
+
+function MonthYearPicker({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(() => Number(value.split('-')[0]))
+  const [year, monthNumber] = value.split('-').map(Number)
+  const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  return <div className="month-picker-wrap">
+    <button type="button" className="ledger-filter month-picker-trigger" aria-expanded={isOpen} aria-haspopup="dialog" onClick={() => { setPickerYear(year); setIsOpen((open) => !open) }}><span>{monthLabel}</span><MonthPickerChevron /></button>
+    {isOpen && <div className="month-picker-popover" role="dialog" aria-label="Select inventory month">
+      <div className="month-picker-header"><button type="button" aria-label="Previous year" onClick={() => setPickerYear((currentYear) => currentYear - 1)}><MonthPickerArrow direction="previous" /></button><strong>{pickerYear}</strong><button type="button" aria-label="Next year" onClick={() => setPickerYear((currentYear) => currentYear + 1)}><MonthPickerArrow direction="next" /></button></div>
+      <div className="month-picker-grid">{monthShortNames.map((month, index) => <button type="button" key={month} className={year === pickerYear && monthNumber === index + 1 ? 'selected-month' : ''} aria-pressed={year === pickerYear && monthNumber === index + 1} onClick={() => { onChange(`${pickerYear}-${String(index + 1).padStart(2, '0')}`); setIsOpen(false) }}>{month}</button>)}</div>
+    </div>}
+  </div>
+}
+
+function SidebarIcon({ name }) {
+  const shapes = {
+    overview: <><rect x="3.5" y="3.5" width="7" height="7" rx="1" /><rect x="13.5" y="3.5" width="7" height="7" rx="1" /><rect x="3.5" y="13.5" width="7" height="7" rx="1" /><rect x="13.5" y="13.5" width="7" height="7" rx="1" /></>,
+    estock: <><path d="m12 3 8.5 4.5L12 12 3.5 7.5 12 3Z" /><path d="M3.5 12 12 16.5l8.5-4.5M3.5 16.5 12 21l8.5-4.5M12 12v9" /></>,
+    monthly: <><path d="M4 19.5h16M6.5 16v-4m5 4V7m5 9v-6" /><path d="M4 4.5h16" /></>,
+    inventory: <><path d="m4 7 8-4 8 4v10l-8 4-8-4V7Z" /><path d="m4 7 8 4 8-4M12 11v10" /></>,
+    rpci: <><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" /><path d="M14 3.5v4h4M8.5 12h7M8.5 15.5h7" /></>,
+    users: <><circle cx="9" cy="8" r="3.2" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.5a3.1 3.1 0 0 1 0 6M17 15a4.8 4.8 0 0 1 3.5 4.6" /></>,
+    movement: <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.7 9A7 7 0 0 1 18 6.5L20 12M4 12l2 5.5A7 7 0 0 0 18.3 15" /></>,
+    reports: <><path d="M4 20V10m5 10V4m5 16v-7m5 7V7" /><path d="M2.5 20.5h19" /></>,
+  }
+  return <svg className="sidebar-icon sidebar-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{shapes[name]}</svg>
+}
 
 function getSavedDashboardSection() {
   try {
@@ -55,7 +94,7 @@ const sampleMhmapRows = [
   { no: 20, name: 'Valproic acid 250mg/5ml syrup, 120ml bottle', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
 ]
 
-function MonthlyStockCard({ rows, periodLabels, regular = false }) {
+function MonthlyStockCard({ rows, periodLabels, regular = false, monthLabel = 'November 2026' }) {
   const days = Array.from({ length: 31 }, (_, index) => index + 1)
   return (
     <div className="ledger-scroll" role="region" aria-label={`${regular ? 'Regular' : 'Donation'} inventory monthly stock card, scroll horizontally to view all columns`} tabIndex="0">
@@ -65,7 +104,7 @@ function MonthlyStockCard({ rows, periodLabels, regular = false }) {
             <th rowSpan="2" className="ledger-num sticky-num">#</th><th rowSpan="2" className="ledger-item sticky-item">ITEMS</th>
             {regular && <><th rowSpan="2" className="ledger-unit">UNIT OF<br />MEASURE</th><th rowSpan="2" className="ledger-price">UNIT<br />PRICE</th><th rowSpan="2" className="ledger-price">DPRI<br />PRICE</th><th rowSpan="2" className="ledger-category">CATEGORY</th><th rowSpan="2" className="ledger-other">OTHER CATEGORY<br />(MOBCHA, YAKAP)</th></>}
             <th rowSpan="2" className="ledger-expiry">EXPIRY<br />DATE</th><th rowSpan="2" className="ledger-lot">LOT<br />NUMBER</th><th rowSpan="2" className="ledger-beginning">BEGINNING<br />BALANCE</th><th rowSpan="2" className="ledger-delivery">DELIVERY<br />DATE</th><th rowSpan="2" className="ledger-qty">QTY<br />DELIVERED</th>
-            <th colSpan={regular ? 32 : 31} className="ledger-month">NOVEMBER 2026</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
+            <th colSpan={regular ? 32 : 31} className="ledger-month">{monthLabel.toUpperCase()}</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
           </tr>
           <tr>
             {(regular ? days.slice(0, 3) : days).map((day) => <th className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{day}</th>)}
@@ -99,6 +138,9 @@ function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
   const [stockMenuOpen, setStockMenuOpen] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen)
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection)
+  const [stockMonth, setStockMonth] = useState('2026-11')
+  const [stockYear, stockMonthNumber] = stockMonth.split('-').map(Number)
+  const stockMonthLabel = new Date(stockYear, stockMonthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   function navigateToSection(section) {
     setActiveSection(section)
@@ -136,14 +178,14 @@ function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
             <span>JVGH <strong>PHARMACY</strong></span>
           </a>
           <button className="sidebar-toggle" type="button" aria-label={sidebarOpen ? 'Collapse sidebar to icons' : 'Expand sidebar'} title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'} aria-expanded={sidebarOpen} aria-controls="admin-sidebar" onClick={() => setSidebarOpen((open) => !open)}><span /><span /><span /></button>
-          <button className="sidebar-mobile-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}>×</button>
+          <button className="sidebar-mobile-close" type="button" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg></button>
         </div>
         <p className="sidebar-caption">WORKSPACE</p>
         <nav className="sidebar-nav" aria-label="Admin navigation">
-          <button className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`} title="Overview" type="button" onClick={() => navigateToSection('overview')}><span className="sidebar-icon">▦</span><span className="sidebar-label">Overview</span></button>
+          <button className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`} title="Overview" type="button" onClick={() => navigateToSection('overview')}><SidebarIcon name="overview" /><span className="sidebar-label">Overview</span></button>
           <div className={`sidebar-group ${stockMenuOpen ? 'is-open' : ''}`}>
             <button className="sidebar-link sidebar-parent" type="button" aria-expanded={stockMenuOpen} onClick={() => setStockMenuOpen((open) => !open)}>
-              <span className="sidebar-icon">▤</span><span className="sidebar-label">E-STOCK</span><span className="sidebar-chevron" aria-hidden="true">⌄</span>
+              <SidebarIcon name="estock" /><span className="sidebar-label">E-STOCK</span><svg className="sidebar-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5" /></svg>
             </button>
             {stockMenuOpen && <div className="sidebar-submenu">
               <button className={`sidebar-sublink ${activeSection === 'regular' ? 'active' : ''}`} title="Regular" type="button" onClick={() => navigateToSection('regular')}><span className="sidebar-submenu-icon">R</span><span className="sidebar-sublink-label">Regular</span></button>
@@ -151,18 +193,18 @@ function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
               <button className={`sidebar-sublink ${activeSection === 'mhmap' ? 'active' : ''}`} title="MHMAP" type="button" onClick={() => navigateToSection('mhmap')}><span className="sidebar-submenu-icon">M</span><span className="sidebar-sublink-label">MHMAP</span></button>
             </div>}
           </div>
-          <button className={`sidebar-link ${activeSection === 'monthly-consumption' ? 'active' : ''}`} title="Monthly Consumption" type="button" onClick={() => navigateToSection('monthly-consumption')}><span className="sidebar-icon">▥</span><span className="sidebar-label">Monthly Consumption</span></button>
-          <button className={`sidebar-link ${activeSection === 'inventory' ? 'active' : ''}`} title="Inventory" type="button" onClick={() => navigateToSection('inventory')}><span className="sidebar-icon">▤</span><span className="sidebar-label">Inventory</span></button>
-          <button className={`sidebar-link ${activeSection === 'rpci-regular' ? 'active' : ''}`} title="RPCI Regular" type="button" onClick={() => navigateToSection('rpci-regular')}><span className="sidebar-icon">▧</span><span className="sidebar-label">RPCI Regular</span></button>
-          <button className={`sidebar-link ${activeSection === 'rpci-donation' ? 'active' : ''}`} title="RPCI Donation" type="button" onClick={() => navigateToSection('rpci-donation')}><span className="sidebar-icon">▧</span><span className="sidebar-label">RPCI Donation</span></button>
-          <button className={`sidebar-link ${activeSection === 'user-management' ? 'active' : ''}`} title="User Management" type="button" onClick={() => navigateToSection('user-management')}><span className="sidebar-icon">♙</span><span className="sidebar-label">User Management</span></button>
-          <a className="sidebar-link" title="Stock movements" href="#activity"><span className="sidebar-icon">↻</span><span className="sidebar-label">Stock movements</span><small>Sample</small></a>
-          <a className="sidebar-link" title="Reports" href="#reports"><span className="sidebar-icon">▥</span><span className="sidebar-label">Reports</span><small>Sample</small></a>
+          <button className={`sidebar-link ${activeSection === 'monthly-consumption' ? 'active' : ''}`} title="Monthly Consumption" type="button" onClick={() => navigateToSection('monthly-consumption')}><SidebarIcon name="monthly" /><span className="sidebar-label">Monthly Consumption</span></button>
+          <button className={`sidebar-link ${activeSection === 'inventory' ? 'active' : ''}`} title="Inventory" type="button" onClick={() => navigateToSection('inventory')}><SidebarIcon name="inventory" /><span className="sidebar-label">Inventory</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-regular' ? 'active' : ''}`} title="RPCI Regular" type="button" onClick={() => navigateToSection('rpci-regular')}><SidebarIcon name="rpci" /><span className="sidebar-label">RPCI Regular</span></button>
+          <button className={`sidebar-link ${activeSection === 'rpci-donation' ? 'active' : ''}`} title="RPCI Donation" type="button" onClick={() => navigateToSection('rpci-donation')}><SidebarIcon name="rpci" /><span className="sidebar-label">RPCI Donation</span></button>
+          <button className={`sidebar-link ${activeSection === 'user-management' ? 'active' : ''}`} title="User Management" type="button" onClick={() => navigateToSection('user-management')}><SidebarIcon name="users" /><span className="sidebar-label">User Management</span></button>
+          <a className="sidebar-link" title="Stock movements" href="#activity"><SidebarIcon name="movement" /><span className="sidebar-label">Stock movements</span><small>Sample</small></a>
+          <a className="sidebar-link" title="Reports" href="#reports"><SidebarIcon name="reports" /><span className="sidebar-label">Reports</span><small>Sample</small></a>
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-user-mark">{user.fullName?.charAt(0)?.toUpperCase() || 'A'}</div>
           <div className="sidebar-user-info"><strong>{user.fullName}</strong><span>Administrator</span></div>
-          <button className="sidebar-logout" type="button" onClick={onLogout} disabled={submitting} aria-label="Sign out">↗</button>
+          <button className="sidebar-logout" type="button" onClick={onLogout} disabled={submitting} aria-label="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></svg></button>
         </div>
       </aside>
 
@@ -208,27 +250,27 @@ function AdminDashboard({ user, csrfToken, onLogout, submitting }) {
         {activeSection === 'regular' && <div className="section-page-content">
           <section className="dashboard-card regular-ledger-card" id="regular">
             <div className="ledger-heading">
-              <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular inventory</h2><p>Monthly stock card · November 2026</p></div>
-              <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><button type="button" className="ledger-filter">November 2026 <span>⌄</span></button></div>
+              <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular inventory</h2><p>Monthly stock card · {stockMonthLabel}</p></div>
+              <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={setStockMonth} /></div>
             </div>
             <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
-            <MonthlyStockCard rows={sampleRegularRows} periodLabels={weeklyRanges} regular />
+            <MonthlyStockCard rows={sampleRegularRows} periodLabels={weeklyRanges} regular monthLabel={stockMonthLabel} />
           </section>
         </div>}
 
         {activeSection === 'donation' && <div className="section-page-content">
           <section className="dashboard-card regular-ledger-card" id="donation">
-            <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / DONATION</span><h2>Donation inventory</h2><p>Monthly stock card · November 2026</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><button type="button" className="ledger-filter">November 2026 <span>⌄</span></button></div></div>
+            <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / DONATION</span><h2>Donation inventory</h2><p>Monthly stock card · {stockMonthLabel}</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={setStockMonth} /></div></div>
             <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
-            <MonthlyStockCard rows={sampleDonationRows} periodLabels={donationWeeklyRanges} />
+            <MonthlyStockCard rows={sampleDonationRows} periodLabels={donationWeeklyRanges} monthLabel={stockMonthLabel} />
           </section>
         </div>}
 
         {activeSection === 'mhmap' && <div className="section-page-content">
           <section className="dashboard-card regular-ledger-card">
-            <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card · November 2026</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><button type="button" className="ledger-filter">November 2026 <span>⌄</span></button></div></div>
+            <div className="ledger-heading"><div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card · {stockMonthLabel}</p></div><div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={setStockMonth} /></div></div>
             <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
-            <MonthlyStockCard rows={sampleMhmapRows} periodLabels={donationWeeklyRanges} />
+            <MonthlyStockCard rows={sampleMhmapRows} periodLabels={donationWeeklyRanges} monthLabel={stockMonthLabel} />
           </section>
         </div>}
 
