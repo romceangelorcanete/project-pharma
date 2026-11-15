@@ -6,7 +6,6 @@ import MhmapInventory from "./MhmapInventory.jsx";
 import MonthYearPicker from "../components/MonthYearPicker.jsx";
 import MonthlyStockCard from "../components/MonthlyStockCard.jsx";
 const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
-
 const dashboardSectionKeys = [
   "overview",
   "regular",
@@ -139,6 +138,12 @@ export default function AdminDashboard({
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection);
   const [stockMonth, setStockMonth] = useState("2026-11");
+  const [stockYear, stockMonthNumber] = stockMonth.split("-").map(Number);
+  const stockMonthLabel = new Date(
+    stockYear,
+    stockMonthNumber - 1,
+    1,
+  ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   function navigateToSection(section) {
     setActiveSection(section);
     if (window.innerWidth <= 760) setSidebarOpen(false);
@@ -549,7 +554,7 @@ export default function AdminDashboard({
             </div>
             <footer className="dashboard-footer">
               Dashboard preview · All inventory and activity figures shown are
-              sampling data.
+              sample data.
             </footer>
           </>
         )}
