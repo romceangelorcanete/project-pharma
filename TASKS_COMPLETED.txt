@@ -61,3 +61,18 @@ User Management edit URL - November 15, 2026
 User Management Add user icon - November 15, 2026
 - Replaced the text plus character with a consistently rendered inline SVG icon.
 - Adjusted button layout and icon spacing.
+
+Regular Add item sample search behavior - November 15, 2026
+- Fixed Add item so submitting a sample row clears the Search Items field and resets filters, showing all inventory rows alongside the new item.
+- Kept added rows in local page state only; no database changes.
+
+Regular inventory sample row editing - November 15, 2026
+- Clicking an item name in the Regular stock card opens an edit form populated with that sample item.
+- The form includes the Regular stock-card fields: item details, multiple deliveries, daily consumption (days 1-31), SL RET, ending balance, monthly consumption, and all weekly consumption periods.
+- Saving updates the selected row in local page state only; no database changes.
+- `npm run build` completed successfully.
+
+Sidebar Stock Cards shortcut - November 15, 2026
+- Restored the E-STOCK submenu label and added a separate Stock Cards shortcut that opens Regular inventory.
+- Positioned Stock Cards below the E-STOCK submenu and above Monthly Consumption; it remains available in the collapsed responsive sidebar.
+- Added a Stock Cards return action to the Regular sample edit form.

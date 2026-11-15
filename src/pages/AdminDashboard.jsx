@@ -276,6 +276,8 @@ export default function AdminDashboard({
             <button
               className="sidebar-link sidebar-parent"
               type="button"
+              title="E-STOCK"
+              aria-label="Toggle E-STOCK submenu"
               aria-expanded={stockMenuOpen}
               onClick={() => setStockMenuOpen((open) => !open)}
             >
@@ -321,6 +323,15 @@ export default function AdminDashboard({
               </div>
             )}
           </div>
+          <button
+            className={`sidebar-link ${activeSection === "regular" ? "active" : ""}`}
+            title="Stock Cards"
+            type="button"
+            onClick={() => navigateToSection("regular")}
+          >
+            <SidebarIcon name="estock" />
+            <span className="sidebar-label">Stock Cards</span>
+          </button>
           <button
             className={`sidebar-link ${activeSection === "monthly-consumption" ? "active" : ""}`}
             title="Monthly Consumption"
