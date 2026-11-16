@@ -324,7 +324,7 @@ export default function AdminDashboard({
             )}
           </div>
           <button
-            className={`sidebar-link ${activeSection === "regular" ? "active" : ""}`}
+            className="sidebar-link"
             title="Stock Cards"
             type="button"
             onClick={() => navigateToSection("regular")}

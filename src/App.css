@@ -436,6 +436,12 @@
 .ledger-table .ledger-category { width: 160px; min-width: 160px; white-space: normal; }
 .ledger-table .ledger-other { width: 150px; min-width: 150px; white-space: normal; }
 .ledger-table .ledger-expiry { width: 105px; min-width: 105px; white-space: pre-line; }
+.regular-grid-table .ledger-expiry-colored { padding: 0; background: #fff; }
+.regular-grid-table .ledger-expiry-date { display: block; padding: 4px 3px; background: #fff; }
+.regular-grid-table .ledger-expiry-date + .ledger-expiry-date { border-top: 1px dashed #dce5df; }
+.regular-grid-table .ledger-expiry-date.expiry-current-year { background: #b9dbc4; color: #244b33; }
+.regular-grid-table .ledger-expiry-date.expiry-next-year { background: #f2cccc; color: #713a3a; }
+.regular-grid-table .ledger-expiry-date.expiry-normal-year { background: #fff; color: inherit; }
 .ledger-table .ledger-lot { width: 115px; min-width: 115px; white-space: pre-line; }
 .ledger-table .ledger-beginning { width: 112px; min-width: 112px; }
 .ledger-table .ledger-delivery { width: 125px; min-width: 125px; white-space: pre-line; }

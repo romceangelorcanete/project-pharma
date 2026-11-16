@@ -76,3 +76,27 @@ Sidebar Stock Cards shortcut - November 15, 2026
 - Restored the E-STOCK submenu label and added a separate Stock Cards shortcut that opens Regular inventory.
 - Positioned Stock Cards below the E-STOCK submenu and above Monthly Consumption; it remains available in the collapsed responsive sidebar.
 - Added a Stock Cards return action to the Regular sample edit form.
+
+Regular expiry date year colors - November 16, 2026
+- Rendered each Regular expiry date separately so mixed years in one cell are colored independently.
+- Current calendar year is green, next calendar year is red, and dates beyond next year stay white.
+- `npm run build` completed successfully.
+
+Regular sample item multiple expiry dates - November 16, 2026
+- Added repeatable expiry date entries to the Regular Add/Edit item form, alongside repeatable delivery entries.
+- Saved multiple expiry dates as separate values so year-based green/red/white coloring applies independently in the stock card.
+- `npm run build` completed successfully.
+
+Regular expiry date picker - November 16, 2026
+- Changed expiry date entries in the Regular Add/Edit item form to native calendar date pickers.
+- Existing month/year expiries load as the first day of that month and save back in MM/YYYY format; full dates retain their selected day.
+- `npm run build` completed successfully.
+
+Regular expiry picker compact layout - November 16, 2026
+- Shortened each expiry date picker to a compact field and placed multiple expiry inputs and the Add expiry date action on one wrapping row.
+- `npm run build` completed successfully.
+
+Regular navigation focus - November 16, 2026
+- Removed the duplicate Stock Cards shortcut from the responsive sidebar so selecting E-STOCK > Regular highlights Regular only.
+- Kept the E-STOCK submenu and the Stock Cards return button within the Regular item form.
+- Restored the Stock Cards shortcut in the sidebar without an active state tied to Regular, preventing both entries from highlighting together.
