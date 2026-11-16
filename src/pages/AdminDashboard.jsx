@@ -9,6 +9,7 @@ const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
 const dashboardSectionKeys = [
   "overview",
   "regular",
+  "stock-cards",
   "donation",
   "mhmap",
   "monthly-consumption",
@@ -148,18 +149,25 @@ export default function AdminDashboard({
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection);
   const [stockMonth, setStockMonth] = useState("2026-11");
+  const [clockNow, setClockNow] = useState(() => new Date());
   const [stockYear, stockMonthNumber] = stockMonth.split("-").map(Number);
   const stockMonthLabel = new Date(
     stockYear,
     stockMonthNumber - 1,
     1,
   ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const liveClockLabel = `${clockNow.toLocaleDateString("en-US", { weekday: "long" })}, ${clockNow.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}, ${clockNow.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase()}`;
   function navigateToSection(section) {
     setActiveSection(section);
     const route = section === "overview" ? "/dashboard" : `/${section}`;
     window.history.pushState({ section }, "", route);
     if (window.innerWidth <= 760) setSidebarOpen(false);
   }
+
+  useEffect(() => {
+    const clockTimer = window.setInterval(() => setClockNow(new Date()), 1000);
+    return () => window.clearInterval(clockTimer);
+  }, []);
 
   useEffect(() => {
     const currentRoute =
@@ -195,6 +203,7 @@ export default function AdminDashboard({
   const sectionTitles = {
     overview: "Dashboard",
     regular: "Regular inventory",
+    "stock-cards": "Stock Cards",
     donation: "Donation inventory",
     mhmap: "MHMAP inventory",
     "monthly-consumption": "Monthly Consumption",
@@ -324,10 +333,10 @@ export default function AdminDashboard({
             )}
           </div>
           <button
-            className="sidebar-link"
+            className={`sidebar-link ${activeSection === "stock-cards" ? "active" : ""}`}
             title="Stock Cards"
             type="button"
-            onClick={() => navigateToSection("regular")}
+            onClick={() => navigateToSection("stock-cards")}
           >
             <SidebarIcon name="estock" />
             <span className="sidebar-label">Stock Cards</span>
@@ -430,6 +439,7 @@ export default function AdminDashboard({
             </div>
           </div>
           <div className="dashboard-header-actions">
+            <time className="dashboard-live-clock">{liveClockLabel}</time>
             <span className="sample-indicator">
               <i /> Sample data
             </span>
@@ -634,6 +644,7 @@ export default function AdminDashboard({
 
         {[
           "monthly-consumption",
+          "stock-cards",
           "inventory",
           "rpci-regular",
           "rpci-donation",

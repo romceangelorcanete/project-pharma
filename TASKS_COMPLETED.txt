@@ -100,3 +100,13 @@ Regular navigation focus - November 16, 2026
 - Removed the duplicate Stock Cards shortcut from the responsive sidebar so selecting E-STOCK > Regular highlights Regular only.
 - Kept the E-STOCK submenu and the Stock Cards return button within the Regular item form.
 - Restored the Stock Cards shortcut in the sidebar without an active state tied to Regular, preventing both entries from highlighting together.
+
+Stock Cards sample view - November 16, 2026
+- Changed the sidebar Stock Cards button to open its own sample view route instead of navigating to Regular.
+- Kept Regular, Donation, and MHMAP under the separate E-STOCK submenu.
+- `npm run build` completed successfully.
+
+Live dashboard date and time - November 16, 2026
+- Added a live header clock showing weekday, 12-hour time with seconds, and uppercase month/day/year.
+- Clock uses the browser's local date/time and updates every second, including responsive layout styling.
+- `npm run build` completed successfully.
