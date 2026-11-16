@@ -237,9 +237,7 @@ export default function AdminDashboard({
             href="/"
             aria-label="JVGH Pharmacy home"
           >
-            <span className="brand-mark" aria-hidden="true">
-              +
-            </span>
+            <img className="dashboard-brand-logo" src="/jvgh-pharmacy-icon.jpg" alt="" />
             <span>
               JVGH <strong>PHARMACY</strong>
             </span>

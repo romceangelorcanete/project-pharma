@@ -5,9 +5,10 @@
 .regular-search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: #344a3b; font: inherit; font-size: 11px; }
 .regular-search input::placeholder { color: #98a49c; }
 .regular-search input::-webkit-search-cancel-button { cursor: pointer; }
-.regular-select { position: relative; display: grid; grid-template-columns: 1fr; align-content: center; gap: 2px; padding: 3px 10px; }
+.regular-select { position: relative; display: grid; grid-template-columns: 1fr; align-content: center; gap: 2px; padding: 3px 0; }
+.regular-select > span { margin-left: 10px; }
 .regular-select > span, .regular-sort > span { color: #8a968e; font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
-.regular-select select { width: 100%; min-width: 0; padding: 0 15px 0 0; overflow: hidden; border: 0; outline: 0; appearance: none; background: transparent; color: #405449; font-family: inherit; font-size: 10px; text-overflow: ellipsis; cursor: pointer; }
+.regular-select select { width: 100%; min-width: 0; padding: 0 26px 0 10px; overflow: hidden; border: 0; outline: 0; appearance: none; background: transparent; color: #405449; font-family: inherit; font-size: 10px; text-overflow: ellipsis; cursor: pointer; }
 .regular-select::after { position: absolute; right: 11px; bottom: 10px; width: 5px; height: 5px; border-right: 1px solid #74877a; border-bottom: 1px solid #74877a; content: ''; pointer-events: none; transform: rotate(45deg); }
 .regular-sort { display: grid; gap: 5px; }
 .regular-sort > div { display: flex; gap: 4px; }
@@ -26,8 +27,10 @@
 .regular-item-modal-heading p { margin: 5px 0 0; color: #87938b; font-size: 10px; }
 .regular-item-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
 .regular-item-form > label { display: grid; gap: 5px; color: #4e6255; font-size: 10px; font-weight: 700; }
-.regular-item-form input { width: 100%; min-width: 0; min-height: 38px; padding: 0 10px; border: 1px solid #dce5df; border-radius: 7px; background: #fbfdfb; color: #32463a; font: inherit; font-size: 11px; }
-.regular-item-form input:focus { outline: 0; border-color: #8db49a; box-shadow: 0 0 0 3px rgba(76, 137, 96, .1); }
+.regular-item-form input, .regular-item-form select { width: 100%; min-width: 0; min-height: 38px; padding: 0 10px; border: 1px solid #dce5df; border-radius: 7px; background: #fbfdfb; color: #32463a; font: inherit; font-size: 11px; }
+.regular-item-form input:focus, .regular-item-form select:focus { outline: 0; border-color: #8db49a; box-shadow: 0 0 0 3px rgba(76, 137, 96, .1); }
+.regular-item-form select { padding-right: 34px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m2.5 4.5 3.5 3 3.5-3' fill='none' stroke='%236d8375' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; cursor: pointer; }
+.regular-item-form select:invalid { color: #89968e; }
 .regular-item-form .regular-item-name-field, .regular-item-form-actions { grid-column: 1 / -1; }
 .regular-item-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .regular-item-cancel { min-height: 34px; padding: 0 12px; border: 1px solid #dce5df; border-radius: 7px; background: #fff; color: #5e7065; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }

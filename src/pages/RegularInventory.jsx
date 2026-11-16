@@ -10,6 +10,9 @@ const sampleRegularRows = [
 
 
 const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
+const unitOptions = ['tablet', 'vial', 'ampule', 'capsule', 'bottle', 'suspension', 'syrup', 'drops', 'inhalation', 'eye drops', 'cream', 'suppository', 'tab', 'powder', 'parenteral', 'ointment', 'nebule', 'syringe', 'supp', 'spray', 'sachet', 'gargle', 'eye drop', 'carpule']
+const categoryOptions = ['ANTI-HYPERTENSIVES', 'ANTI-THROMBOTICS', 'ANTI-ASTHMA & COPD', 'ANTI-DIABETICS', 'ANTI-DYSLIPIDEMIA', 'ANTI-BIOTICS / MICROBIALS', 'NERVOUS SYSTEM', 'SUPPORTIVE / OTHER THERAPHY', 'VITAMINS', 'ANTI-ALLERGY/HISTAMINE', 'EXPANDERS', 'DANGEROUS/REGULATED', 'ANALGESICS', 'ANTIDEPRESSANTS / PSYCHOTICS', 'ANTI-GOUT', 'ANTI-VERTIGO', 'CORTICOSTEROIDS', 'DIURETICS', 'ANESTHESIA / OR', 'IV FLUIDS', 'GASTROINTESTINAL', 'ELECTROLYTES', 'OPTHALMIC PREPARATIONS', 'VACCINES / BIOLOGICALS', 'ANTI-THYROID AGENTS', 'MUSCLE RELAXANT', 'SURFACTANT', 'SMALL VIALS', 'COUGH SUPPRESSANTS', 'ANTI-NEOPLASTICS / ONCO', 'CARDIOVASCULAR', 'BRONCHODILATORS', 'NEUROMUSCULAR BLOCKER', 'ANTI-CHOLINERGIC', 'IMMUNOSUPPRESSANTS', 'LAXATIVE', 'ANTIDOTE', 'ANTI-EPILEPTIC', 'Total Parenteral Nutrition']
+const otherCategoryOptions = ['MOBCHA', 'YAKAP', 'OR', 'HIGH ALERT', 'NONE']
 const blankDelivery = () => ({ date: '', qty: '', vendor: '' })
 const blankItemForm = () => ({ name: '', unit: '', price: '', dpri: '', category: '', other: '', expiryDates: [''], lot: '', beginning: '', deliveries: [blankDelivery()], daily: {}, returnQty: '', ending: '', monthly: '', weekly: ['', '', '', '', ''] })
 
@@ -50,8 +53,6 @@ export default function RegularInventory({ stockMonth, onStockMonthChange }) {
   const [itemForm, setItemForm] = useState(blankItemForm)
   const [year, monthNumber] = stockMonth.split('-').map(Number)
   const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const units = [...new Set(rows.map((item) => item.unit).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-  const categories = [...new Set(rows.map((item) => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   const visibleRows = rows
     .filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
     .filter((item) => unitFilter === 'all' || item.unit === unitFilter)
@@ -159,8 +160,8 @@ export default function RegularInventory({ stockMonth, onStockMonthChange }) {
         <div className="regular-inventory-actions"><span>Sample only · not saved to database</span><button className="regular-add-item-button" type="button" onClick={beginAddItem}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Add item</button></div>
         <div className="regular-tools" role="search" aria-label="Filter Regular inventory items">
           <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-          <label className="regular-select"><span>Unit of Measure</span><select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">All units</option>{units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
-          <label className="regular-select"><span>Category</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">All categories</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+          <label className="regular-select"><span>Unit of Measure</span><select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">All units</option>{unitOptions.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
+          <label className="regular-select"><span>Category</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="all">All categories</option>{categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
           <div className="regular-sort"><span>Sort items</span><div><button type="button" className={sort === 'az' ? 'active' : ''} aria-pressed={sort === 'az'} onClick={() => setSort('az')}>A to Z</button><button type="button" className={sort === 'za' ? 'active' : ''} aria-pressed={sort === 'za'} onClick={() => setSort('za')}>Z to A</button></div></div>
         </div>
         <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
@@ -172,11 +173,11 @@ export default function RegularInventory({ stockMonth, onStockMonthChange }) {
           <div className="regular-item-modal-heading"><div><span className="ledger-kicker">E-STOCK / REGULAR · SAMPLE</span><h2 id="regular-add-item-title">{editingItemNo === null ? 'Add item' : 'Edit item'}</h2><p>This preview is not saved to the database.</p></div></div>
           <form className="regular-item-form" onSubmit={addSampleItem}>
             <label className="regular-item-name-field">Item name<input name="name" value={itemForm.name} onChange={updateItemForm} placeholder="Medicine or supply name" required autoFocus /></label>
-            <label>Unit of measure<input name="unit" value={itemForm.unit} onChange={updateItemForm} placeholder="e.g. tablet, vial" /></label>
+            <label>Unit of measure<select name="unit" value={itemForm.unit} onChange={updateItemForm}><option value="">Select a unit</option>{itemForm.unit && !unitOptions.includes(itemForm.unit) && <option value={itemForm.unit}>{itemForm.unit}</option>}{unitOptions.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
             <label>Unit price<input name="price" type="number" min="0" step="0.01" value={itemForm.price} onChange={updateItemForm} placeholder="0.00" /></label>
             <label>DPRI price<input name="dpri" type="number" min="0" step="0.01" value={itemForm.dpri} onChange={updateItemForm} placeholder="0.00" /></label>
-            <label>Category<input name="category" value={itemForm.category} onChange={updateItemForm} placeholder="Category" /></label>
-            <label>Other category<input name="other" value={itemForm.other} onChange={updateItemForm} placeholder="Optional" /></label>
+            <label>Category<select name="category" value={itemForm.category} onChange={updateItemForm}><option value="">Select a category</option>{itemForm.category && !categoryOptions.includes(itemForm.category) && <option value={itemForm.category}>{itemForm.category}</option>}{categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+            <label>Other category<select name="other" value={itemForm.other} onChange={updateItemForm}><option value="">Select other category</option>{itemForm.other && !otherCategoryOptions.includes(itemForm.other) && <option value={itemForm.other}>{itemForm.other}</option>}{otherCategoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
             <label>Lot number<input name="lot" value={itemForm.lot} onChange={updateItemForm} placeholder="Lot number" /></label>
             <label>Beginning balance<input name="beginning" type="number" min="0" step="1" value={itemForm.beginning} onChange={updateItemForm} placeholder="0" /></label>
             <fieldset className="regular-expiries-fieldset"><legend>Expiry dates</legend><div className="regular-expiries-list">{itemForm.expiryDates.map((expiry, index) => <div className="regular-expiry-fields" key={index}><label><span>{index === 0 ? 'Expiry date' : `Expiry date ${index + 1}`}</span><input type="date" value={expiry} onChange={(event) => updateExpiryDate(index, event.target.value)} /></label>{itemForm.expiryDates.length > 1 && <button type="button" className="regular-remove-delivery" aria-label={`Remove expiry date ${index + 1}`} onClick={() => setItemForm((current) => ({ ...current, expiryDates: current.expiryDates.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, expiryDates: [...current.expiryDates, ''] }))}>+ Add expiry date</button></div></fieldset>

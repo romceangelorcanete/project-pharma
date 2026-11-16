@@ -110,3 +110,26 @@ Live dashboard date and time - November 16, 2026
 - Added a live header clock showing weekday, 12-hour time with seconds, and uppercase month/day/year.
 - Clock uses the browser's local date/time and updates every second, including responsive layout styling.
 - `npm run build` completed successfully.
+
+Regular item form dropdowns - November 17, 2026
+- Changed Unit of Measure and Category to styled dropdowns in the Regular Add/Edit sample form using the provided option lists.
+- Preserved existing values when editing an item, even if they are not in the predefined list.
+- 
+pm run build completed successfully.
+
+Regular inventory filter dropdown options - November 17, 2026
+- Updated the Unit of Measure and Category filters above the Regular table to show the complete preset lists instead of only values currently present in sample rows.
+- 
+pm run build completed successfully.
+
+Regular Other Category dropdown - November 17, 2026
+- Replaced the free-text Other category field in the Regular sample Add/Edit form with options for MOBCHA, YAKAP, OR, HIGH ALERT, and NONE.
+- Preserved existing custom values while editing.
+- 
+pm run build completed successfully.
+
+JVGH Pharmacy brand icons - November 17, 2026
+- Added the pharmacy seal image to the dashboard sidebar brand and set it as the browser tab favicon.
+- Updated the browser title to JVGH Pharmacy.
+- 
+pm run build completed successfully.
