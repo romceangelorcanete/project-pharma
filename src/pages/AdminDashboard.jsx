@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import UserManagement from "./UserManagement.jsx";
-import RegularInventory from "./RegularInventory.jsx";
+import RegularInventory, { sampleRegularRows } from "./RegularInventory.jsx";
+import RegularDropdownOptions from "./RegularDropdownOptions.jsx";
+import StockCardView from "./StockCardView.jsx";
+import { createStockCardPrintDocument } from "./stockCardPrint.js";
 import DonationInventory from "./DonationInventory.jsx";
 import MhmapInventory from "./MhmapInventory.jsx";
 import MonthYearPicker from "../components/MonthYearPicker.jsx";
@@ -9,6 +12,7 @@ const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
 const dashboardSectionKeys = [
   "overview",
   "regular",
+  "regular-options",
   "stock-cards",
   "donation",
   "mhmap",
@@ -69,6 +73,14 @@ function SidebarIcon({ name }) {
       <>
         <path d="M4 20V10m5 10V4m5 16v-7m5 7V7" />
         <path d="M2.5 20.5h19" />
+      </>
+    ),
+    options: (
+      <>
+        <path d="M4 6h16M4 12h16M4 18h16" />
+        <circle cx="8" cy="6" r="1.7" fill="white" />
+        <circle cx="15" cy="12" r="1.7" fill="white" />
+        <circle cx="10" cy="18" r="1.7" fill="white" />
       </>
     ),
   };
@@ -148,6 +160,7 @@ export default function AdminDashboard({
   const [stockMenuOpen, setStockMenuOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection);
+  const [selectedStockCard, setSelectedStockCard] = useState(sampleRegularRows[0]);
   const [stockMonth, setStockMonth] = useState("2026-11");
   const [clockNow, setClockNow] = useState(() => new Date());
   const [stockYear, stockMonthNumber] = stockMonth.split("-").map(Number);
@@ -162,6 +175,18 @@ export default function AdminDashboard({
     const route = section === "overview" ? "/dashboard" : `/${section}`;
     window.history.pushState({ section }, "", route);
     if (window.innerWidth <= 760) setSidebarOpen(false);
+  }
+
+  function openStockCard(item = sampleRegularRows[0], month = stockMonth) {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setSelectedStockCard(item || sampleRegularRows[0]);
+      navigateToSection("stock-cards");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(createStockCardPrintDocument(item || sampleRegularRows[0], month));
+    printWindow.document.close();
   }
 
   useEffect(() => {
@@ -203,6 +228,7 @@ export default function AdminDashboard({
   const sectionTitles = {
     overview: "Dashboard",
     regular: "Regular inventory",
+    "regular-options": "Dropdown Settings",
     "stock-cards": "Stock Cards",
     donation: "Donation inventory",
     mhmap: "MHMAP inventory",
@@ -331,15 +357,6 @@ export default function AdminDashboard({
             )}
           </div>
           <button
-            className={`sidebar-link ${activeSection === "stock-cards" ? "active" : ""}`}
-            title="Stock Cards"
-            type="button"
-            onClick={() => navigateToSection("stock-cards")}
-          >
-            <SidebarIcon name="estock" />
-            <span className="sidebar-label">Stock Cards</span>
-          </button>
-          <button
             className={`sidebar-link ${activeSection === "monthly-consumption" ? "active" : ""}`}
             title="Monthly Consumption"
             type="button"
@@ -347,6 +364,15 @@ export default function AdminDashboard({
           >
             <SidebarIcon name="monthly" />
             <span className="sidebar-label">Monthly Consumption</span>
+          </button>
+          <button
+            className={`sidebar-link ${activeSection === "regular-options" ? "active" : ""}`}
+            title="Dropdown Settings"
+            type="button"
+            onClick={() => navigateToSection("regular-options")}
+          >
+            <SidebarIcon name="options" />
+            <span className="sidebar-label">Dropdown Settings</span>
           </button>
           <button
             className={`sidebar-link ${activeSection === "inventory" ? "active" : ""}`}
@@ -617,8 +643,13 @@ export default function AdminDashboard({
           <RegularInventory
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
+            onOpenStockCard={openStockCard}
           />
         )}
+
+        {activeSection === "stock-cards" && <StockCardView item={selectedStockCard} stockMonth={stockMonth} onBack={() => navigateToSection("regular")} />}
+
+        {activeSection === "regular-options" && <RegularDropdownOptions />}
 
         {activeSection === "donation" && (
           <DonationInventory
@@ -642,7 +673,6 @@ export default function AdminDashboard({
 
         {[
           "monthly-consumption",
-          "stock-cards",
           "inventory",
           "rpci-regular",
           "rpci-donation",

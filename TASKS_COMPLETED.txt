@@ -133,3 +133,84 @@ JVGH Pharmacy brand icons - November 17, 2026
 - Updated the browser title to JVGH Pharmacy.
 - 
 pm run build completed successfully.
+
+Regular inventory Excel export - November 17, 2026
+- Added an Export Excel action to the Regular inventory toolbar.
+- Generates a valid .xlsx workbook in the browser with all Regular sample rows, inventory fields, multiple delivery entries, daily consumption, and weekly totals; export is independent of current search/filter visibility.
+- 
+pm run build completed successfully.
+
+Regular dropdown option management - November 17, 2026
+- Added a Dropdown options subpage under E-STOCK in the sidebar to add/delete Regular Unit of Measure and Category choices.
+- Connected the management page to Regular filters and Add/Edit dropdowns; option lists persist in browser localStorage, with a Restore defaults action.
+- 
+pm run build completed successfully.
+
+Drop Options sidebar placement - November 17, 2026
+- Moved Drop Options out of the E-STOCK submenu into its own responsive sidebar button immediately after Monthly Consumption.
+- 
+pm run build completed successfully.
+
+Regular stock card sample view - November 17, 2026
+- Added a Stock Card screen matching the provided ledger format with item/stock details and Date, Reference, Receipt, Issuance, Balance, and Days to Consume columns.
+- Connected the sidebar Stock Cards button and the Regular item form action to the card view; the form layout remains unchanged.
+- 
+pm run build completed successfully.
+
+Stock Card print preview - November 17, 2026
+- Removed the Stock Cards shortcut from the sidebar.
+- The Stock Cards action in the Regular item form now opens a print-ready card for the selected item and launches the browser print preview automatically.
+- Added print styling to exclude the dashboard sidebar/header and retain the stock card sheet; Regular form layout remains unchanged.
+- 
+pm run build completed successfully.
+
+Stock card print preview content fix - November 17, 2026
+- Made the stock card sheet explicitly visible and positioned it as the sole print content so browser print preview includes the supplied card layout.
+- Added a manual Print card action and increased the automatic print delay to allow the rendered sheet to settle.
+- 
+pm run build completed successfully.
+
+Stock card print layout alignment - November 17, 2026
+- Set explicit balanced column widths and consistent dark grid borders for the Stock Card table.
+- Added evenly sized blank ledger rows to preserve the reference stock-card sheet appearance and improve page fill/readability in print preview.
+- 
+pm run build completed successfully.
+
+Stock Card print preview loading fix - November 17, 2026
+- Removed fixed positioning from the printable sheet to prevent print pagination/rendering stalls; the card now prints in normal page flow.
+- 
+pm run build completed successfully.
+
+Stock Card preview render performance - November 17, 2026
+- Changed the Regular form Stock Cards action to open a standalone print tab containing only the stock card HTML, avoiding printing the full React dashboard.
+- Print preview starts after the standalone document loads; included a manual Print card control as fallback.
+- 
+pm run build completed successfully.
+
+Stock Card preview no longer auto-launches print dialog - November 17, 2026
+- Removed the automatic window.print call from the standalone preview so it does not block the app while the browser is still rendering its print preview.
+- Stock card now loads as a stable printable preview tab; Print card is started by the user after the sheet is visible.
+- 
+pm run build completed successfully.
+
+Stock card print header title cleanup - November 17, 2026
+- Cleared the standalone stock card document title so the browser no longer prints the item name centered above the form.
+- 
+pm run build completed successfully.
+
+Stock card print tab title - November 17, 2026
+- Replaced the blank printable document title with JVGH Pharmacy so browser print headers no longer show about:blank or the item name.
+- 
+pm run build completed successfully.
+
+Stock Card preview editable rows - November 17, 2026
+- Made six stock-card ledger rows directly editable in the standalone preview, with date input pickers and automatic current-date fill when starting a blank row.
+- Balance recalculates automatically from beginning balance and edited receipt/issuance quantities; remaining rows stay blank for printing.
+- 
+pm run build completed successfully.
+
+Stock Card automatic date without picker - November 17, 2026
+- Removed the date picker from the six editable stock-card rows and made date fields read-only.
+- Automatically stamps today's date on the first available row and when a user starts another blank row; existing ledger dates are preserved.
+- 
+pm run build completed successfully.
