@@ -12,8 +12,7 @@ export default function MonthlyStockCard({ rows, periodLabels, regular = false, 
             <th colSpan={regular ? 32 : 31} className="ledger-month">{monthLabel.toUpperCase()}</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
           </tr>
           <tr>
-            {(regular ? days.slice(0, 3) : days).map((day) => <th className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{day}</th>)}
-            {regular && <th className="ledger-return">SL<br />RET</th>}
+            {(regular ? days.slice(0, 3) : days).map((day) => <th className={regular ? 'ledger-day' : day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{day}</th>)}
             {regular && days.slice(3).map((day) => <th className="ledger-day" key={day}>{day}</th>)}
             {periodLabels.map((range) => <th className="ledger-week" key={range}>{range}</th>)}
           </tr>
@@ -28,7 +27,7 @@ export default function MonthlyStockCard({ rows, periodLabels, regular = false, 
             return <span className={`ledger-expiry-date ${yearClass}`} key={`${expiry}-${index}`}>{expiry}</span>
           }) : item.expiry}</td><td className="ledger-lot">{item.lot}</td><td className="ledger-beginning">{item.beginning}</td>
           <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>
-          {regular && <>{days.slice(0, 3).map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}<td className="ledger-return">{item.daily.return || ''}</td>{days.slice(3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}</>}
+          {regular && <>{days.slice(0, 3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}{days.slice(3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}</>}
           {!regular && days.map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}
           <td className={`ledger-ending ${item.ending < 0 ? 'ledger-negative' : ''}`}>{item.ending}</td><td className="ledger-month-total">{item.monthly}</td>{item.weekly.map((count, index) => <td className="ledger-week" key={periodLabels[index]}>{count}</td>)}
         </tr>)}</tbody>

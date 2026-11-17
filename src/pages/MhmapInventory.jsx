@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
+import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import './MhmapInventory.css'
-const sampleMhmapRows = [
+export const sampleMhmapRows = [
   { no: 1, name: 'Carbamazepine 200mg tablet', expiry: '', lot: 'PH21-79\n20072773', beginning: 0, deliveries: [{ date: '7/10/2025', qty: 100, vendor: 'NO PAPERS' }, { date: '12/12/2025', qty: 100, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 2, name: 'Chlorpromazine HCl 200mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 3, name: 'Clozapine 100mg tablet', expiry: '2/1/2027', lot: 'B344K015', beginning: 0, deliveries: [{ date: '5/19/2025', qty: 100, vendor: '' }, { date: '11/30/2025', qty: 550, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
@@ -40,6 +41,7 @@ export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLa
           <div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
           <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
         </div>
+        <div className="regular-inventory-actions"><span>Sample data · workbook export</span><ExportEstockButton rows={sampleMhmapRows} activeSheet="mhmap" stockMonth={stockMonth} /></div>
         <div className="regular-tools mhmap-search-tools" role="search" aria-label="Search MHMAP inventory items">
           <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
         </div>

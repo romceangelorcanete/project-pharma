@@ -6,6 +6,7 @@ import StockCardView from "./StockCardView.jsx";
 import { createStockCardPrintDocument } from "./stockCardPrint.js";
 import DonationInventory from "./DonationInventory.jsx";
 import MhmapInventory from "./MhmapInventory.jsx";
+import ExportEstockButton from "../components/ExportEstockButton.jsx";
 import MonthYearPicker from "../components/MonthYearPicker.jsx";
 import MonthlyStockCard from "../components/MonthlyStockCard.jsx";
 const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
@@ -691,6 +692,12 @@ export default function AdminDashboard({
                 {sectionTitle} page layout will appear here. This menu is
                 connected to the sample navigation only for now.
               </p>
+              {activeSection === "monthly-consumption" && (
+                <div className="regular-inventory-actions">
+                  <span>Sample view · workbook export</span>
+                  <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} />
+                </div>
+              )}
             </section>
           </div>
         )}

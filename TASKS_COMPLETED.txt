@@ -214,3 +214,26 @@ Stock Card automatic date without picker - November 17, 2026
 - Automatically stamps today's date on the first available row and when a user starts another blank row; existing ledger dates are preserved.
 - 
 pm run build completed successfully.
+
+Stock Card expanded editable quantity rows - November 17, 2026
+- Expanded the stock-card preview to 20 editable rows, leaving populated transactions at the top and editable blank quantity rows at the bottom for repeated entries such as 1, 1, 1.
+- Automatic dates and running balance behavior retained.
+- 
+pm run build completed successfully.
+
+Stock Card add rows dynamically - November 17, 2026
+- Added an Add row control to extend the stock card beyond its initial 20 rows; appended rows appear at the bottom with today's date and automatic running balance.
+- 
+pm run build completed successfully.
+
+Stock Card automatic bottom rows - November 17, 2026
+- Removed the Add row button; typing in the last row now automatically appends a new editable row below it.
+- Automatic date stamping and running balance remain enabled.
+- 
+pm run build completed successfully.
+
+Regular SL RET removal and day 2 highlight - November 17, 2026
+- Removed SL RET from the Regular monthly stock-card table, item editor, and Excel export.
+- Removed the blue selected-day styling from day 2 on Regular while preserving other inventory views.
+- 
+pm run build completed successfully.

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
+import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import './DonationInventory.css'
-const sampleDonationRows = [
+export const sampleDonationRows = [
   { no: 1, name: 'Aciclovir 250mg vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 2, name: 'Amikacin 125mg/ml vial', unit: 'vial', category: 'Donation', expiry: '', lot: '', beginning: 0, deliveries: [{ date: '9/4/2026', qty: 68, vendor: 'PGH' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 4, name: 'Amino Acid 7%', unit: 'bottle', category: 'Donation', expiry: '12/2026', lot: '2250117', beginning: 10, deliveries: [{ date: '10/14/2026', qty: 20, vendor: 'VMC' }], daily: { 1: 1, 3: 4, 4: 5 }, ending: 0, monthly: 10, weekly: [10, 0, 0, 0, 0] },
@@ -24,6 +25,7 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
           <div><span className="ledger-kicker">E-STOCK / DONATION</span><h2>Donation inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
           <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
         </div>
+        <div className="regular-inventory-actions"><span>Sample data · workbook export</span><ExportEstockButton rows={sampleDonationRows} activeSheet="donation" stockMonth={stockMonth} /></div>
         <div className="regular-tools donation-search-tools" role="search" aria-label="Search Donation inventory items">
           <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
         </div>

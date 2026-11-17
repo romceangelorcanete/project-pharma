@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
+import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { getRegularDropdownOptions } from './regularDropdownOptions.js'
 import './RegularInventory.css'
 export const sampleRegularRows = [
@@ -13,7 +14,7 @@ export const sampleRegularRows = [
 const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
 const otherCategoryOptions = ['MOBCHA', 'YAKAP', 'OR', 'HIGH ALERT', 'NONE']
 const blankDelivery = () => ({ date: '', qty: '', vendor: '' })
-const blankItemForm = () => ({ name: '', unit: '', price: '', dpri: '', category: '', other: '', expiryDates: [''], lot: '', beginning: '', deliveries: [blankDelivery()], daily: {}, returnQty: '', ending: '', monthly: '', weekly: ['', '', '', '', ''] })
+const blankItemForm = () => ({ name: '', unit: '', price: '', dpri: '', category: '', other: '', expiryDates: [''], lot: '', beginning: '', deliveries: [blankDelivery()], daily: {}, ending: '', monthly: '', weekly: ['', '', '', '', ''] })
 
 function toDateInput(value = '') {
   const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
@@ -39,97 +40,6 @@ function toExpiryStockValue(value = '') {
   return match[3] === '01'
     ? `${match[2]}/${match[1]}`
     : `${Number(match[2])}/${Number(match[3])}/${match[1]}`
-}
-
-function xmlEscape(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[character])
-}
-
-function columnName(index) {
-  let name = ''
-  for (let value = index + 1; value > 0; value = Math.floor((value - 1) / 26)) {
-    name = String.fromCharCode(65 + ((value - 1) % 26)) + name
-  }
-  return name
-}
-
-function makeXlsxBlob(headers, dataRows) {
-  const rows = [headers, ...dataRows]
-  const sheetRows = rows.map((row, rowIndex) => {
-    const cells = row.map((value, columnIndex) => {
-      const reference = `${columnName(columnIndex)}${rowIndex + 1}`
-      if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${reference}"><v>${value}</v></c>`
-      return `<c r="${reference}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`
-    }).join('')
-    return `<row r="${rowIndex + 1}">${cells}</row>`
-  }).join('')
-  const files = [
-    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
-    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
-    ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Regular Inventory" sheetId="1" r:id="rId1"/></sheets></workbook>'],
-    ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
-    ['xl/worksheets/sheet1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`],
-  ]
-
-  const encoder = new TextEncoder()
-  const crcTable = Array.from({ length: 256 }, (_, number) => {
-    let value = number
-    for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1
-    return value >>> 0
-  })
-  const crc32 = (bytes) => {
-    let crc = 0xffffffff
-    for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8)
-    return (crc ^ 0xffffffff) >>> 0
-  }
-  const parts = []
-  const entries = []
-  let offset = 0
-  const push = (bytes) => { parts.push(bytes); offset += bytes.length }
-  files.forEach(([path, content]) => {
-    const name = encoder.encode(path)
-    const data = encoder.encode(content)
-    const checksum = crc32(data)
-    const local = new Uint8Array(30 + name.length)
-    const localView = new DataView(local.buffer)
-    localView.setUint32(0, 0x04034b50, true)
-    localView.setUint16(4, 20, true)
-    localView.setUint16(6, 0x0800, true)
-    localView.setUint32(14, checksum, true)
-    localView.setUint32(18, data.length, true)
-    localView.setUint32(22, data.length, true)
-    localView.setUint16(26, name.length, true)
-    local.set(name, 30)
-    entries.push({ name, data, checksum, offset })
-    push(local)
-    push(data)
-  })
-  const centralOffset = offset
-  entries.forEach(({ name, data, checksum, offset: localOffset }) => {
-    const central = new Uint8Array(46 + name.length)
-    const view = new DataView(central.buffer)
-    view.setUint32(0, 0x02014b50, true)
-    view.setUint16(4, 20, true)
-    view.setUint16(6, 20, true)
-    view.setUint16(8, 0x0800, true)
-    view.setUint32(16, checksum, true)
-    view.setUint32(20, data.length, true)
-    view.setUint32(24, data.length, true)
-    view.setUint16(28, name.length, true)
-    view.setUint32(42, localOffset, true)
-    central.set(name, 46)
-    push(central)
-  })
-  const centralSize = offset - centralOffset
-  const end = new Uint8Array(22)
-  const endView = new DataView(end.buffer)
-  endView.setUint32(0, 0x06054b50, true)
-  endView.setUint16(8, entries.length, true)
-  endView.setUint16(10, entries.length, true)
-  endView.setUint32(12, centralSize, true)
-  endView.setUint32(16, centralOffset, true)
-  push(end)
-  return new Blob(parts, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 }
 
 export default function RegularInventory({ stockMonth, onStockMonthChange, onOpenStockCard }) {
@@ -177,7 +87,6 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
       beginning: item.beginning ?? '',
       deliveries: item.deliveries?.length ? item.deliveries.map((delivery) => ({ date: toDateInput(delivery.date || ''), qty: delivery.qty ?? '', vendor: delivery.vendor || '' })) : [blankDelivery()],
       daily: { ...(item.daily || {}) },
-      returnQty: item.daily?.return ?? '',
       ending: item.ending ?? '',
       monthly: item.monthly ?? '',
       weekly: weeklyRanges.map((_, index) => item.weekly?.[index] ?? 0),
@@ -203,23 +112,6 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     setItemForm((current) => ({ ...current, daily: { ...current.daily, [day]: value } }))
   }
 
-  function exportExcel() {
-    const headers = ['#', 'Items', 'Unit of Measure', 'Unit Price', 'DPRI Price', 'Category', 'Other Category (MOBCHA, YAKAP)', 'Expiry Date', 'Lot Number', 'Beginning Balance', 'Delivery Date', 'Qty Delivered', 'Supplier', ...Array.from({ length: 31 }, (_, index) => String(index + 1)), 'SL RET', 'Ending Balance', 'Monthly Consumption', ...weeklyRanges.map((range) => `Weekly ${range}`)]
-    const data = rows.map((item) => {
-      const deliveries = item.deliveries || []
-      return [item.no, item.name, item.unit, item.price, item.dpri, item.category, item.other, item.expiry, item.lot, item.beginning, deliveries.map((delivery) => delivery.date || '').join('\n'), deliveries.map((delivery) => delivery.qty ?? '').join('\n'), deliveries.map((delivery) => delivery.vendor || '').join('\n'), ...Array.from({ length: 31 }, (_, index) => item.daily?.[index + 1] ?? ''), item.daily?.return ?? '', item.ending, item.monthly, ...weeklyRanges.map((_, index) => item.weekly?.[index] ?? '')]
-    })
-    const blob = makeXlsxBlob(headers, data)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `Regular-Inventory-${stockMonth}.xlsx`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
-  }
-
   function addSampleItem(event) {
     event.preventDefault()
     const beginning = Number(itemForm.beginning) || 0
@@ -239,7 +131,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
       lot: itemForm.lot.trim(),
       beginning,
       deliveries,
-      daily: { ...Object.fromEntries(Object.entries(itemForm.daily).map(([day, qty]) => [day, Number(qty) || 0])), return: Number(itemForm.returnQty) || 0 },
+      daily: { ...Object.fromEntries(Object.entries(itemForm.daily).map(([day, qty]) => [day, Number(qty) || 0])) },
       ending: itemForm.ending === '' ? beginning + deliveredQty : Number(itemForm.ending) || 0,
       monthly: Number(itemForm.monthly) || 0,
       weekly: itemForm.weekly.map((qty) => Number(qty) || 0),
@@ -265,7 +157,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
           <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
           <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
         </div>
-        <div className="regular-inventory-actions"><span>Sample only · not saved to database</span><div className="regular-toolbar-actions"><button className="regular-export-button" type="button" onClick={exportExcel}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 13v3h12v-3" /></svg>Export Excel</button><button className="regular-add-item-button" type="button" onClick={beginAddItem}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Add item</button></div></div>
+        <div className="regular-inventory-actions"><span>Sample only · not saved to database</span><div className="regular-toolbar-actions"><ExportEstockButton rows={rows} activeSheet="regular" stockMonth={stockMonth} /><button className="regular-add-item-button" type="button" onClick={beginAddItem}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Add item</button></div></div>
         <div className="regular-tools" role="search" aria-label="Filter Regular inventory items">
           <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
           <label className="regular-select"><span>Unit of Measure</span><select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">All units</option>{dropdownOptions.units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
@@ -292,7 +184,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
             <fieldset className="regular-deliveries-fieldset"><legend>Deliveries</legend>{itemForm.deliveries.map((delivery, index) => <div className="regular-delivery-fields" key={index}><label>Delivery date<input type="date" value={delivery.date} onChange={(event) => updateDelivery(index, 'date', event.target.value)} /></label><label>Qty delivered<input type="number" min="0" step="1" value={delivery.qty} onChange={(event) => updateDelivery(index, 'qty', event.target.value)} placeholder="0" /></label><label>Supplier<input value={delivery.vendor} onChange={(event) => updateDelivery(index, 'vendor', event.target.value)} placeholder="Supplier name" /></label>{itemForm.deliveries.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: current.deliveries.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: [...current.deliveries, blankDelivery()] }))}>+ Add delivery</button></fieldset>
             <label>Ending balance<input name="ending" type="number" min="0" step="1" value={itemForm.ending} onChange={updateItemForm} placeholder="Auto-calculate from balance and deliveries" /></label>
             <label>Monthly consumption<input name="monthly" type="number" min="0" step="1" value={itemForm.monthly} onChange={updateItemForm} placeholder="0" /></label>
-            <fieldset className="regular-daily-fieldset"><legend>Daily consumption · days 1–31</legend><div className="regular-daily-grid">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <label key={day}><span>{day}</span><input aria-label={`Day ${day} consumption`} type="number" min="0" step="1" value={itemForm.daily[day] ?? ''} onChange={(event) => updateDaily(day, event.target.value)} /></label>)}</div><label className="regular-return-field">SL RET<input type="number" min="0" step="1" value={itemForm.returnQty} onChange={(event) => setItemForm((current) => ({ ...current, returnQty: event.target.value }))} /></label></fieldset>
+            <fieldset className="regular-daily-fieldset"><legend>Daily consumption · days 1–31</legend><div className="regular-daily-grid">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <label key={day}><span>{day}</span><input aria-label={`Day ${day} consumption`} type="number" min="0" step="1" value={itemForm.daily[day] ?? ''} onChange={(event) => updateDaily(day, event.target.value)} /></label>)}</div></fieldset>
             <fieldset className="regular-weekly-fieldset"><legend>Weekly consumption</legend><div>{weeklyRanges.map((range, index) => <label key={range}>{range}<input type="number" min="0" step="1" value={itemForm.weekly[index]} onChange={(event) => setItemForm((current) => ({ ...current, weekly: current.weekly.map((qty, weeklyIndex) => weeklyIndex === index ? event.target.value : qty) }))} /></label>)}</div></fieldset>
             <div className="regular-item-form-actions"><button type="button" className="regular-stockcards-button" onClick={() => { const selected = rows.find((item) => item.no === editingItemNo) || rows[0]; setAddItemOpen(false); onOpenStockCard?.(selected, stockMonth) }}>Stock Cards</button><button type="button" className="regular-item-cancel" onClick={() => { setAddItemOpen(false); setEditingItemNo(null) }}>Cancel</button><button type="submit" className="regular-add-item-button">{editingItemNo === null ? 'Add sample item' : 'Save sample changes'}</button></div>
           </form>
