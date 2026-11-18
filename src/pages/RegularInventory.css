@@ -45,13 +45,18 @@
 .ledger-item-edit-trigger:hover { color: #176345; text-decoration: underline; text-underline-offset: 2px; }
 .regular-item-form fieldset { min-width: 0; margin: 0; padding: 11px; border: 1px solid #e2e9e4; border-radius: 8px; }
 .regular-item-form fieldset legend { padding: 0 5px; color: #4e6255; font-size: 10px; font-weight: 750; }
-.regular-deliveries-fieldset, .regular-expiries-fieldset, .regular-daily-fieldset, .regular-weekly-fieldset { grid-column: 1 / -1; }
+.regular-deliveries-fieldset, .regular-expiries-fieldset, .regular-lots-fieldset, .regular-daily-fieldset, .regular-weekly-fieldset { grid-column: 1 / -1; }
 .regular-delivery-fields { display: grid; grid-template-columns: 1fr .7fr 1fr auto; align-items: end; gap: 8px; margin-bottom: 8px; }
 .regular-expiries-list { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
 .regular-expiry-fields { display: flex; align-items: end; gap: 6px; }
 .regular-expiry-fields label { display: grid; gap: 5px; color: #4e6255; font-size: 9px; font-weight: 700; }
 .regular-expiry-fields input { width: 205px; }
 .regular-expiries-list > .regular-add-delivery { min-height: 38px; }
+.regular-lots-list { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.regular-lot-fields { display: flex; align-items: end; gap: 6px; }
+.regular-lot-fields label { display: grid; gap: 5px; color: #4e6255; font-size: 9px; font-weight: 700; }
+.regular-lot-fields input { width: 205px; }
+.regular-lots-list > .regular-add-delivery { min-height: 38px; }
 .regular-delivery-fields label, .regular-weekly-fieldset label { display: grid; gap: 5px; color: #4e6255; font-size: 9px; font-weight: 700; }
 .regular-delivery-fields input, .regular-weekly-fieldset input { min-height: 34px; }
 .regular-add-delivery, .regular-remove-delivery { min-height: 30px; padding: 0 9px; border: 1px solid #dce5df; border-radius: 6px; background: #fff; color: #456951; font: inherit; font-size: 9px; font-weight: 700; cursor: pointer; }

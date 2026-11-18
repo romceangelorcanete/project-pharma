@@ -103,6 +103,33 @@ function clearCellValue(xml, reference) {
   return xml.replace(cellPattern, `<c r="${reference}"${styleAttribute}/>`)
 }
 
+function prepareDataRows(xml, startRow, endRow, visibleRows) {
+  const lastVisibleRow = startRow + visibleRows - 1
+  return xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g, (rowXml) => {
+    const rowNumber = Number(rowXml.match(/\br="(\d+)"/)?.[1])
+    if (!Number.isFinite(rowNumber) || rowNumber < startRow || rowNumber > endRow) return rowXml
+
+    let prepared = rowXml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, (cell) => {
+      if (/<f(?:\s|\/|>)/.test(cell)) return cell
+      const reference = cell.match(/\br="([A-Z]+\d+)"/)?.[1]
+      if (!reference) return cell
+      const style = cell.match(/\bs="(\d+)"/)?.[1]
+      return `<c r="${reference}"${style ? ` s="${style}"` : ''}/>`
+    })
+
+    const openingTag = prepared.match(/^<row\b[^>]*>/)?.[0]
+    if (!openingTag) return prepared
+    let nextOpeningTag = openingTag.replace(/\s+hidden="[^"]*"/, '')
+    if (rowNumber > lastVisibleRow) nextOpeningTag = nextOpeningTag.replace(/>$/, ' hidden="1">')
+    return prepared.replace(openingTag, nextOpeningTag)
+  })
+}
+
+function lastWorksheetRow(xml) {
+  const rowNumbers = [...xml.matchAll(/<row\b[^>]*\br="(\d+)"/g)].map((match) => Number(match[1]))
+  return Math.max(0, ...rowNumbers)
+}
+
 function excelColumn(index) {
   let label = ''
   for (let value = index; value > 0; value = Math.floor((value - 1) / 26)) label = String.fromCharCode(65 + ((value - 1) % 26)) + label
@@ -247,15 +274,15 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     workbookEntry.updatedText = workbookXml
   }
   const sheets = [
-    { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1' },
-    { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1' },
-    { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1' },
+    { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1', dataStartRow: 3 },
+    { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
+    { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
     {
       file: 'xl/worksheets/sheet4.xml',
       groups: [
-        { rows: regularRows, startRow: 4, averageMonths: 9 },
-        { rows: donationRows, startRow: 478, averageMonths: 8 },
-        { rows: mhmapRows, startRow: 589, averageMonths: 8 },
+        { rows: regularRows, startRow: 4, endRow: 475, averageMonths: 9 },
+        { rows: donationRows, startRow: 478, endRow: 586, averageMonths: 8 },
+        { rows: mhmapRows, startRow: 589, endRow: 1087, averageMonths: 8 },
       ],
       map: (item, row) => monthlyCellValues(item, row, stockMonth),
     },
@@ -266,6 +293,14 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     if (!entry) throw new Error(`Walang worksheet sa template: ${sheet.file}`)
     const bytes = await transformBytes(entry.compressedData, 'deflate-raw', DecompressionStream)
     let xml = new TextDecoder().decode(bytes)
+    if (sheet.dataStartRow) {
+      xml = prepareDataRows(xml, sheet.dataStartRow, lastWorksheetRow(xml), sheet.rows.length)
+    }
+    if (sheet.groups) {
+      sheet.groups.forEach((group) => {
+        xml = prepareDataRows(xml, group.startRow, group.endRow, group.rows.length)
+      })
+    }
     if (sheet.monthTitleCell) {
       const [year, month] = stockMonth.split('-').map(Number)
       const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()

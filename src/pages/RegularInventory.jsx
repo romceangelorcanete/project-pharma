@@ -14,7 +14,7 @@ export const sampleRegularRows = [
 const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
 const otherCategoryOptions = ['MOBCHA', 'YAKAP', 'OR', 'HIGH ALERT', 'NONE']
 const blankDelivery = () => ({ date: '', qty: '', vendor: '' })
-const blankItemForm = () => ({ name: '', unit: '', price: '', dpri: '', category: '', other: '', expiryDates: [''], lot: '', beginning: '', deliveries: [blankDelivery()], daily: {}, ending: '', monthly: '', weekly: ['', '', '', '', ''] })
+const blankItemForm = () => ({ name: '', unit: '', price: '', dpri: '', category: '', other: '', expiryDates: [''], lotNumbers: [''], beginning: '', deliveries: [blankDelivery()], daily: {}, ending: '', monthly: '', weekly: ['', '', '', '', ''] })
 
 function toDateInput(value = '') {
   const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
@@ -83,7 +83,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
       expiryDates: String(item.expiry || '').split('\n').filter(Boolean).length
         ? String(item.expiry || '').split('\n').filter(Boolean).map(toExpiryDateInput)
         : [''],
-      lot: item.lot || '',
+      lotNumbers: String(item.lot || '').split('\n').filter(Boolean).length ? String(item.lot || '').split('\n').filter(Boolean) : [''],
       beginning: item.beginning ?? '',
       deliveries: item.deliveries?.length ? item.deliveries.map((delivery) => ({ date: toDateInput(delivery.date || ''), qty: delivery.qty ?? '', vendor: delivery.vendor || '' })) : [blankDelivery()],
       daily: { ...(item.daily || {}) },
@@ -108,6 +108,13 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     }))
   }
 
+  function updateLotNumber(index, value) {
+    setItemForm((current) => ({
+      ...current,
+      lotNumbers: current.lotNumbers.map((lot, rowIndex) => rowIndex === index ? value : lot),
+    }))
+  }
+
   function updateDaily(day, value) {
     setItemForm((current) => ({ ...current, daily: { ...current.daily, [day]: value } }))
   }
@@ -128,7 +135,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
       category: itemForm.category.trim(),
       other: itemForm.other.trim(),
       expiry: itemForm.expiryDates.map((expiry) => toExpiryStockValue(expiry.trim())).filter(Boolean).join('\n'),
-      lot: itemForm.lot.trim(),
+      lot: itemForm.lotNumbers.map((lot) => lot.trim()).filter(Boolean).join('\n'),
       beginning,
       deliveries,
       daily: { ...Object.fromEntries(Object.entries(itemForm.daily).map(([day, qty]) => [day, Number(qty) || 0])) },
@@ -187,8 +194,8 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
             <label>DPRI price<input name="dpri" type="number" min="0" step="0.01" value={itemForm.dpri} onChange={updateItemForm} placeholder="0.00" /></label>
             <label>Category<select name="category" value={itemForm.category} onChange={updateItemForm}><option value="">Select a category</option>{itemForm.category && !dropdownOptions.categories.includes(itemForm.category) && <option value={itemForm.category}>{itemForm.category}</option>}{dropdownOptions.categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
             <label>Other category<select name="other" value={itemForm.other} onChange={updateItemForm}><option value="">Select other category</option>{itemForm.other && !otherCategoryOptions.includes(itemForm.other) && <option value={itemForm.other}>{itemForm.other}</option>}{otherCategoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
-            <label>Lot number<input name="lot" value={itemForm.lot} onChange={updateItemForm} placeholder="Lot number" /></label>
             <label>Beginning balance<input name="beginning" type="number" min="0" step="1" value={itemForm.beginning} onChange={updateItemForm} placeholder="0" /></label>
+            <fieldset className="regular-lots-fieldset"><legend>Lot numbers</legend><div className="regular-lots-list">{itemForm.lotNumbers.map((lot, index) => <div className="regular-lot-fields" key={index}><label><span>{index === 0 ? 'Lot number' : `Lot number ${index + 1}`}</span><input value={lot} onChange={(event) => updateLotNumber(index, event.target.value)} placeholder="Lot number" /></label>{itemForm.lotNumbers.length > 1 && <button type="button" className="regular-remove-delivery" aria-label={`Remove lot number ${index + 1}`} onClick={() => setItemForm((current) => ({ ...current, lotNumbers: current.lotNumbers.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, lotNumbers: [...current.lotNumbers, ''] }))}>+ Add lot number</button></div></fieldset>
             <fieldset className="regular-expiries-fieldset"><legend>Expiry dates</legend><div className="regular-expiries-list">{itemForm.expiryDates.map((expiry, index) => <div className="regular-expiry-fields" key={index}><label><span>{index === 0 ? 'Expiry date' : `Expiry date ${index + 1}`}</span><input type="date" value={expiry} onChange={(event) => updateExpiryDate(index, event.target.value)} /></label>{itemForm.expiryDates.length > 1 && <button type="button" className="regular-remove-delivery" aria-label={`Remove expiry date ${index + 1}`} onClick={() => setItemForm((current) => ({ ...current, expiryDates: current.expiryDates.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, expiryDates: [...current.expiryDates, ''] }))}>+ Add expiry date</button></div></fieldset>
             <fieldset className="regular-deliveries-fieldset"><legend>Deliveries</legend>{itemForm.deliveries.map((delivery, index) => <div className="regular-delivery-fields" key={index}><label>Delivery date<input type="date" value={delivery.date} onChange={(event) => updateDelivery(index, 'date', event.target.value)} /></label><label>Qty delivered<input type="number" min="0" step="1" value={delivery.qty} onChange={(event) => updateDelivery(index, 'qty', event.target.value)} placeholder="0" /></label><label>Supplier<input value={delivery.vendor} onChange={(event) => updateDelivery(index, 'vendor', event.target.value)} placeholder="Supplier name" /></label>{itemForm.deliveries.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: current.deliveries.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: [...current.deliveries, blankDelivery()] }))}>+ Add delivery</button></fieldset>
             <label>Ending balance<input name="ending" type="number" min="0" step="1" value={itemForm.ending} onChange={updateItemForm} placeholder="Auto-calculate from balance and deliveries" /></label>

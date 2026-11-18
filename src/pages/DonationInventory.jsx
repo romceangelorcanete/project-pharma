@@ -16,7 +16,7 @@ export const sampleDonationRows = [
 
 const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
 const blankDelivery = () => ({ date: '', qty: '', vendor: '' })
-const blankForm = () => ({ name: '', unit: '', expiryDates: [''], lot: '', beginning: '', deliveries: [blankDelivery()], daily: {}, ending: '', monthly: '', weekly: ['', '', '', '', ''] })
+const blankForm = () => ({ name: '', unit: '', expiryDates: [''], lotNumbers: [''], beginning: '', deliveries: [blankDelivery()], daily: {}, ending: '', monthly: '', weekly: ['', '', '', '', ''] })
 
 function dateToInput(value = '') {
   const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
@@ -70,7 +70,7 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
     setItemForm({
       name: item.name || '', unit: item.unit || '',
       expiryDates: expiryDates.length ? expiryDates : [''],
-      lot: item.lot || '', beginning: item.beginning ?? '',
+      lotNumbers: String(item.lot || '').split('\n').filter(Boolean).length ? String(item.lot || '').split('\n').filter(Boolean) : [''], beginning: item.beginning ?? '',
       deliveries: item.deliveries?.length ? item.deliveries.map((delivery) => ({ date: dateToInput(delivery.date || ''), qty: delivery.qty ?? '', vendor: delivery.vendor || '' })) : [blankDelivery()],
       daily: { ...(item.daily || {}) }, ending: item.ending ?? '', monthly: item.monthly ?? '',
       weekly: weeklyRanges.map((_, index) => item.weekly?.[index] ?? 0),
@@ -80,6 +80,10 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
 
   function updateForm(key, value) {
     setItemForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function updateLotNumber(index, value) {
+    setItemForm((current) => ({ ...current, lotNumbers: current.lotNumbers.map((lot, rowIndex) => rowIndex === index ? value : lot) }))
   }
 
   function saveItem(event) {
@@ -94,7 +98,7 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
       no: editingNo ?? Math.max(0, ...rows.map((item) => Number(item.no) || 0)) + 1,
       name: itemForm.name.trim(), unit: itemForm.unit,
       expiry: itemForm.expiryDates.map((date) => expiryToStock(date)).filter(Boolean).join('\n'),
-      lot: itemForm.lot.trim(), beginning, deliveries, daily,
+      lot: itemForm.lotNumbers.map((lot) => lot.trim()).filter(Boolean).join('\n'), beginning, deliveries, daily,
       ending: itemForm.ending === '' ? beginning + deliveries.reduce((sum, delivery) => sum + delivery.qty, 0) - dailyTotal : Number(itemForm.ending) || 0,
       monthly: itemForm.monthly === '' ? dailyTotal : Number(itemForm.monthly) || 0,
       weekly: weeklyRanges.map((_, index) => Number(itemForm.weekly[index]) || 0),
@@ -143,8 +147,8 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
           <form className="regular-item-form" onSubmit={saveItem}>
             <label className="regular-item-name-field">Item name<input value={itemForm.name} onChange={(event) => updateForm('name', event.target.value)} placeholder="Medicine or supply name" required autoFocus /></label>
             <label>Unit of measure<select value={itemForm.unit} onChange={(event) => updateForm('unit', event.target.value)}><option value="">Select a unit</option>{itemForm.unit && !dropdownOptions.units.includes(itemForm.unit) && <option value={itemForm.unit}>{itemForm.unit}</option>}{dropdownOptions.units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>
-            <label>Lot number<input value={itemForm.lot} onChange={(event) => updateForm('lot', event.target.value)} placeholder="Lot number" /></label>
             <label>Beginning balance<input type="number" min="0" step="1" value={itemForm.beginning} onChange={(event) => updateForm('beginning', event.target.value)} placeholder="0" /></label>
+            <fieldset className="regular-lots-fieldset"><legend>Lot numbers</legend><div className="regular-lots-list">{itemForm.lotNumbers.map((lot, index) => <div className="regular-lot-fields" key={index}><label><span>{index === 0 ? 'Lot number' : `Lot number ${index + 1}`}</span><input value={lot} onChange={(event) => updateLotNumber(index, event.target.value)} placeholder="Lot number" /></label>{itemForm.lotNumbers.length > 1 && <button type="button" className="regular-remove-delivery" aria-label={`Remove lot number ${index + 1}`} onClick={() => setItemForm((current) => ({ ...current, lotNumbers: current.lotNumbers.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, lotNumbers: [...current.lotNumbers, ''] }))}>+ Add lot number</button></div></fieldset>
             <fieldset className="regular-expiries-fieldset"><legend>Expiry dates</legend><div className="regular-expiries-list">{itemForm.expiryDates.map((expiry, index) => <div className="regular-expiry-fields" key={index}><label><span>{index === 0 ? 'Expiry date' : `Expiry date ${index + 1}`}</span><input type="date" value={expiry} onChange={(event) => setItemForm((current) => ({ ...current, expiryDates: current.expiryDates.map((date, rowIndex) => rowIndex === index ? event.target.value : date) }))} /></label>{itemForm.expiryDates.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, expiryDates: current.expiryDates.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, expiryDates: [...current.expiryDates, ''] }))}>+ Add expiry date</button></div></fieldset>
             <fieldset className="regular-deliveries-fieldset"><legend>Deliveries</legend>{itemForm.deliveries.map((delivery, index) => <div className="regular-delivery-fields" key={index}><label>Delivery date<input type="date" value={delivery.date} onChange={(event) => updateDelivery(index, 'date', event.target.value)} /></label><label>Qty delivered<input type="number" min="0" step="1" value={delivery.qty} onChange={(event) => updateDelivery(index, 'qty', event.target.value)} placeholder="0" /></label><label>Supplier<input value={delivery.vendor} onChange={(event) => updateDelivery(index, 'vendor', event.target.value)} placeholder="Supplier name" /></label>{itemForm.deliveries.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: current.deliveries.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: [...current.deliveries, blankDelivery()] }))}>+ Add delivery</button></fieldset>
             <label>Ending balance<input type="number" min="0" step="1" value={itemForm.ending} onChange={(event) => updateForm('ending', event.target.value)} placeholder="Auto-calculate from balance, deliveries, and consumption" /></label>

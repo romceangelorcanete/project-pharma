@@ -135,8 +135,8 @@ export default function App() {
       <main className="page-shell">
         <header className="topbar">
           <a className="brand" href="/" aria-label="JVGH Pharmacy home">
-            <span className="brand-mark" aria-hidden="true">
-              +
+            <span className="brand-mark">
+              <img src="/jvgh-pharmacy-icon.jpg" alt="" />
             </span>
             <span>
               JVGH <strong>PHARMACY</strong>
@@ -205,8 +205,8 @@ export default function App() {
     <main className="page-shell login-layout">
       <section className="login-intro" aria-label="Pharmacy inventory system">
         <a className="brand" href="/" aria-label="JVGH Pharmacy home">
-          <span className="brand-mark" aria-hidden="true">
-            +
+          <span className="brand-mark">
+            <img src="/jvgh-pharmacy-icon.jpg" alt="" />
           </span>
           <span>
             JVGH <strong>PHARMACY</strong>
