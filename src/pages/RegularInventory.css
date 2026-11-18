@@ -1,4 +1,5 @@
 .regular-tools { display: grid; grid-template-columns: minmax(190px, 1.35fr) minmax(145px, .8fr) minmax(180px, 1fr) auto; align-items: end; gap: 10px; padding: 13px 18px; border-top: 1px solid #edf1ee; background: #fff; }
+.donation-inventory-page .regular-tools, .mhmap-inventory-page .regular-tools { grid-template-columns: minmax(190px, 1.35fr) minmax(145px, .8fr) auto; }
 .regular-search, .regular-select { min-width: 0; height: 36px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid #dfe7e2; border-radius: 7px; background: #fff; color: #75847b; }
 .regular-search:focus-within, .regular-select:focus-within { border-color: #8db49a; box-shadow: 0 0 0 3px rgba(76, 137, 96, .1); }
 .regular-search svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.7; }
@@ -55,6 +56,8 @@
 .regular-delivery-fields input, .regular-weekly-fieldset input { min-height: 34px; }
 .regular-add-delivery, .regular-remove-delivery { min-height: 30px; padding: 0 9px; border: 1px solid #dce5df; border-radius: 6px; background: #fff; color: #456951; font: inherit; font-size: 9px; font-weight: 700; cursor: pointer; }
 .regular-remove-delivery { margin-bottom: 2px; color: #9c4f45; }
+.regular-delete-item-button, .donation-delete-button { min-height: 34px; margin-bottom: 0; border-color: #ead5d2; background: #fffafa; }
+.regular-delete-item-button:hover, .donation-delete-button:hover { border-color: #d9aaa4; background: #fff1ef; color: #8b352d; }
 .regular-daily-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
 .regular-daily-grid label { display: grid; gap: 3px; color: #63756a; font-size: 9px; text-align: center; }
 .regular-daily-grid label span { font-weight: 700; }

@@ -6,9 +6,7 @@ import StockCardView from "./StockCardView.jsx";
 import { createStockCardPrintDocument } from "./stockCardPrint.js";
 import DonationInventory from "./DonationInventory.jsx";
 import MhmapInventory from "./MhmapInventory.jsx";
-import ExportEstockButton from "../components/ExportEstockButton.jsx";
-import MonthYearPicker from "../components/MonthYearPicker.jsx";
-import MonthlyStockCard from "../components/MonthlyStockCard.jsx";
+import MonthlyConsumption from "./MonthlyConsumption.jsx";
 const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
 const dashboardSectionKeys = [
   "overview",
@@ -162,6 +160,7 @@ export default function AdminDashboard({
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection);
   const [selectedStockCard, setSelectedStockCard] = useState(sampleRegularRows[0]);
+  const [stockCardReturnSection, setStockCardReturnSection] = useState("regular");
   const [stockMonth, setStockMonth] = useState("2026-11");
   const [clockNow, setClockNow] = useState(() => new Date());
   const [stockYear, stockMonthNumber] = stockMonth.split("-").map(Number);
@@ -178,10 +177,11 @@ export default function AdminDashboard({
     if (window.innerWidth <= 760) setSidebarOpen(false);
   }
 
-  function openStockCard(item = sampleRegularRows[0], month = stockMonth) {
+  function openStockCard(item = sampleRegularRows[0], month = stockMonth, returnSection = "regular") {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       setSelectedStockCard(item || sampleRegularRows[0]);
+      setStockCardReturnSection(returnSection);
       navigateToSection("stock-cards");
       return;
     }
@@ -648,7 +648,7 @@ export default function AdminDashboard({
           />
         )}
 
-        {activeSection === "stock-cards" && <StockCardView item={selectedStockCard} stockMonth={stockMonth} onBack={() => navigateToSection("regular")} />}
+        {activeSection === "stock-cards" && <StockCardView item={selectedStockCard} stockMonth={stockMonth} backLabel={`Back to ${stockCardReturnSection === "donation" ? "Donation" : "Regular"} inventory`} onBack={() => navigateToSection(stockCardReturnSection)} />}
 
         {activeSection === "regular-options" && <RegularDropdownOptions />}
 
@@ -657,6 +657,7 @@ export default function AdminDashboard({
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
             monthLabel={stockMonthLabel}
+            onOpenStockCard={openStockCard}
           />
         )}
 
@@ -665,6 +666,7 @@ export default function AdminDashboard({
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
             monthLabel={stockMonthLabel}
+            onOpenStockCard={openStockCard}
           />
         )}
 
@@ -672,12 +674,11 @@ export default function AdminDashboard({
           <UserManagement csrfToken={csrfToken} />
         )}
 
-        {[
-          "monthly-consumption",
-          "inventory",
-          "rpci-regular",
-          "rpci-donation",
-        ].includes(activeSection) && (
+        {activeSection === "monthly-consumption" && (
+          <MonthlyConsumption stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+        )}
+
+        {["inventory", "rpci-regular", "rpci-donation"].includes(activeSection) && (
           <div className="section-page-content">
             <section className="dashboard-card estock-other-card">
               <div className="card-heading">
@@ -692,12 +693,6 @@ export default function AdminDashboard({
                 {sectionTitle} page layout will appear here. This menu is
                 connected to the sample navigation only for now.
               </p>
-              {activeSection === "monthly-consumption" && (
-                <div className="regular-inventory-actions">
-                  <span>Sample view · workbook export</span>
-                  <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} />
-                </div>
-              )}
             </section>
           </div>
         )}

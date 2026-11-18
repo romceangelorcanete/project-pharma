@@ -150,6 +150,15 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     setAddItemOpen(false)
   }
 
+  function deleteSampleItem() {
+    const itemName = rows.find((item) => item.no === editingItemNo)?.name
+    if (!window.confirm(`Delete ${itemName || 'this item'} from the sample list?`)) return
+    setRows((current) => current.filter((item) => item.no !== editingItemNo))
+    setAddItemOpen(false)
+    setEditingItemNo(null)
+    setItemForm(blankItemForm())
+  }
+
   return (
     <div className="section-page-content">
       <section className="dashboard-card regular-ledger-card" id="regular">
@@ -186,7 +195,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
             <label>Monthly consumption<input name="monthly" type="number" min="0" step="1" value={itemForm.monthly} onChange={updateItemForm} placeholder="0" /></label>
             <fieldset className="regular-daily-fieldset"><legend>Daily consumption · days 1–31</legend><div className="regular-daily-grid">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <label key={day}><span>{day}</span><input aria-label={`Day ${day} consumption`} type="number" min="0" step="1" value={itemForm.daily[day] ?? ''} onChange={(event) => updateDaily(day, event.target.value)} /></label>)}</div></fieldset>
             <fieldset className="regular-weekly-fieldset"><legend>Weekly consumption</legend><div>{weeklyRanges.map((range, index) => <label key={range}>{range}<input type="number" min="0" step="1" value={itemForm.weekly[index]} onChange={(event) => setItemForm((current) => ({ ...current, weekly: current.weekly.map((qty, weeklyIndex) => weeklyIndex === index ? event.target.value : qty) }))} /></label>)}</div></fieldset>
-            <div className="regular-item-form-actions"><button type="button" className="regular-stockcards-button" onClick={() => { const selected = rows.find((item) => item.no === editingItemNo) || rows[0]; setAddItemOpen(false); onOpenStockCard?.(selected, stockMonth) }}>Stock Cards</button><button type="button" className="regular-item-cancel" onClick={() => { setAddItemOpen(false); setEditingItemNo(null) }}>Cancel</button><button type="submit" className="regular-add-item-button">{editingItemNo === null ? 'Add sample item' : 'Save sample changes'}</button></div>
+            <div className="regular-item-form-actions"><button type="button" className="regular-stockcards-button" onClick={() => { const selected = rows.find((item) => item.no === editingItemNo) || rows[0]; setAddItemOpen(false); onOpenStockCard?.(selected, stockMonth) }}>Stock Cards</button>{editingItemNo !== null && <button type="button" className="regular-remove-delivery regular-delete-item-button" onClick={deleteSampleItem}>Delete item</button>}<button type="button" className="regular-item-cancel" onClick={() => { setAddItemOpen(false); setEditingItemNo(null) }}>Cancel</button><button type="submit" className="regular-add-item-button">{editingItemNo === null ? 'Add sample item' : 'Save sample changes'}</button></div>
           </form>
         </section>
       </div>}

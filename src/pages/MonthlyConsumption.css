@@ -1,0 +1,39 @@
+.monthly-consumption-page { min-width: 0; }
+.monthly-consumption-card { overflow: hidden; }
+.monthly-consumption-heading { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 20px; border-bottom: 1px solid #e8eeea; }
+.monthly-consumption-heading h2 { margin: 5px 0 0; color: #253b30; font-size: 18px; }
+.monthly-consumption-heading p { margin: 5px 0 0; color: #849188; font-size: 10px; }
+.monthly-consumption-year-control { display: flex; align-items: center; gap: 14px; }
+.monthly-consumption-year-control > label { display: flex; align-items: center; gap: 8px; color: #708076; font-size: 10px; font-weight: 700; }
+.monthly-consumption-year-control select { min-width: 100px; height: 38px; padding: 0 30px 0 11px; border: 1px solid #dce5df; border-radius: 7px; appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m2.5 4.5 3.5 3 3.5-3' fill='none' stroke='%236d8375' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; color: #344a3b; font: inherit; cursor: pointer; }
+.monthly-consumption-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; border-bottom: 1px solid #e8eeea; background: #fbfcfb; }
+.monthly-consumption-tabs { display: flex; align-items: center; gap: 5px; }
+.monthly-consumption-tabs button { min-height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #63766a; font: inherit; font-size: 10px; font-weight: 650; cursor: pointer; }
+.monthly-consumption-tabs button:hover { background: #f0f6f1; }
+.monthly-consumption-tabs button.active { border-color: #d5e6d9; background: #eaf4ed; color: #176345; font-weight: 750; }
+.monthly-consumption-actions { display: flex; align-items: center; gap: 8px; }
+.monthly-consumption-search { width: min(290px, 28vw); height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid #dfe7e2; border-radius: 7px; background: #fff; color: #75847b; }
+.monthly-consumption-search:focus-within { border-color: #8db49a; box-shadow: 0 0 0 3px rgba(76, 137, 96, .1); }
+.monthly-consumption-search svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.7; }
+.monthly-consumption-search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: #344a3b; font: inherit; font-size: 11px; }
+.monthly-consumption-table-scroll { max-width: 100%; overflow: auto; }
+.monthly-consumption-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; color: #425349; font-size: 10px; text-align: center; }
+.monthly-consumption-table th, .monthly-consumption-table td { min-width: 78px; height: 40px; padding: 7px 8px; border-right: 1px solid #d5dfd9; border-bottom: 1px solid #d5dfd9; background: #fff; }
+.monthly-consumption-table th { position: sticky; top: 0; z-index: 2; height: 56px; background: #dceaf4; color: #31475a; font-size: 9px; font-weight: 800; line-height: 1.25; }
+.monthly-consumption-table th:first-child, .monthly-consumption-table td:first-child { min-width: 46px; }
+.monthly-consumption-table th.monthly-consumption-item, .monthly-consumption-table td.monthly-consumption-item-name { min-width: 250px; text-align: left; }
+.monthly-consumption-table td.monthly-consumption-item-name { color: #355b43; font-weight: 650; }
+.monthly-consumption-table th:nth-last-child(-n+4), .monthly-consumption-table td:nth-last-child(-n+4) { min-width: 126px; }
+.monthly-consumption-table tbody tr:nth-child(even) td { background-color: #fbfcfb; }
+.monthly-consumption-empty { margin: 0; padding: 22px; color: #78877e; font-size: 11px; text-align: center; }
+.monthly-consumption-footer { display: flex; justify-content: space-between; padding: 10px 18px; color: #829087; font-size: 10px; }
+
+@media (max-width: 760px) {
+  .monthly-consumption-heading { align-items: flex-start; flex-direction: column; }
+  .monthly-consumption-toolbar { align-items: stretch; flex-direction: column; padding: 10px 12px; }
+  .monthly-consumption-tabs button { flex: 1; padding: 0 8px; }
+  .monthly-consumption-actions { width: 100%; }
+  .monthly-consumption-search { flex: 1; width: auto; }
+  .monthly-consumption-year-control { width: 100%; justify-content: space-between; }
+  .monthly-consumption-footer { padding: 9px 12px; }
+}

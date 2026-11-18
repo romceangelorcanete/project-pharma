@@ -237,3 +237,11 @@ Regular SL RET removal and day 2 highlight - November 17, 2026
 - Removed the blue selected-day styling from day 2 on Regular while preserving other inventory views.
 - 
 pm run build completed successfully.
+
+Monthly Consumption and year-based E-STOCK export - November 18, 2026
+- Added a Monthly Consumption page with Regular Stocks, Donation, and MHMAP tabs, Jan-Dec columns, and a selectable year.
+- Kept the sample consumption figures tied to 2026; for 2027, monthly input cells are cleared while workbook formulas remain in place.
+- Switched the export source template to public/templates/E-STOCK NOVEMBER 2026.xlsx so its ending balance, weekly consumption, monthly total, and average formulas are retained.
+- Enabled automatic formula recalculation when Excel opens the exported workbook.
+- Export filenames now follow the selected period, for example E-STOCK_DECEMBER_2027.xlsx.
+- Generated a 2027 export check and confirmed its December title, blank monthly input cells, and preserved calculation formulas.

@@ -6,7 +6,7 @@ function displayDate(value) {
   return Number.isNaN(date.getTime()) ? value : `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`
 }
 
-export default function StockCardView({ item, stockMonth, onBack }) {
+export default function StockCardView({ item, stockMonth, onBack, backLabel = 'Back to Regular inventory' }) {
   const [year, month] = stockMonth.split('-').map(Number)
   const movements = [
     ...(item.deliveries || []).map((delivery) => ({ date: delivery.date, reference: delivery.vendor, receipt: Number(delivery.qty) || 0, issue: 0 })),
@@ -47,7 +47,7 @@ export default function StockCardView({ item, stockMonth, onBack }) {
         </div>
         <footer className="stock-card-sheet-footer"><span>{item.name}</span><span>{new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span></footer>
       </section>
-      <div className="stock-card-view-actions"><button className="stock-card-back-button" type="button" onClick={onBack}>← Back to Regular inventory</button><button className="stock-card-print-button" type="button" onClick={() => window.print()}>Print card</button></div>
+      <div className="stock-card-view-actions"><button className="stock-card-back-button" type="button" onClick={onBack}>← {backLabel}</button><button className="stock-card-print-button" type="button" onClick={() => window.print()}>Print card</button></div>
     </div>
   )
 }

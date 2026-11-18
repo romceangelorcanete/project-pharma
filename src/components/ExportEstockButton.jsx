@@ -1,6 +1,6 @@
 import { createEstockWorkbook } from '../utils/xlsxTemplateExport.js'
 
-export default function ExportEstockButton({ rows = [], activeSheet = 'regular', stockMonth = '2026-11' }) {
+export default function ExportEstockButton({ rows = [], activeSheet = 'regular', stockMonth = '2026-11', consumptionYear = 2026 }) {
   async function downloadWorkbook() {
     try {
       const [regularModule, donationModule, mhmapModule] = await Promise.all([
@@ -13,18 +13,21 @@ export default function ExportEstockButton({ rows = [], activeSheet = 'regular',
         donationRows: activeSheet === 'donation' ? rows : donationModule.sampleDonationRows,
         mhmapRows: activeSheet === 'mhmap' ? rows : mhmapModule.sampleMhmapRows,
         stockMonth,
+        consumptionYear,
       }
       const workbook = await createEstockWorkbook(workbookRows)
       const url = URL.createObjectURL(workbook)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'E-STOCK.xlsx'
+      const [year, month] = stockMonth.split('-').map(Number)
+      const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }).toUpperCase()
+      link.download = `E-STOCK_${monthName}_${year}.xlsx`
       document.body.appendChild(link)
       link.click()
       link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Hindi ma-download ang E-STOCK.xlsx. Pakisubukan ulit.')
+      window.alert(error instanceof Error ? error.message : 'Hindi ma-download ang E-STOCK workbook. Pakisubukan ulit.')
     }
   }
 

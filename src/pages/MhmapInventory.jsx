@@ -1,8 +1,16 @@
-import { useState } from 'react'
-import MonthYearPicker from '../components/MonthYearPicker.jsx'
-import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
-import ExportEstockButton from '../components/ExportEstockButton.jsx'
+import DonationInventory from './DonationInventory.jsx'
 import './MhmapInventory.css'
+
+function inferUnit(name) {
+  const normalized = name.toLowerCase()
+  if (/\btablet\b/.test(normalized)) return 'tablet'
+  if (/\bcapsule\b/.test(normalized)) return 'capsule'
+  if (/\bsyrup\b/.test(normalized)) return 'syrup'
+  if (/\bbottle\b/.test(normalized)) return 'bottle'
+  if (/\bamp(?:ule)?\b/.test(normalized)) return 'ampule'
+  return ''
+}
+
 export const sampleMhmapRows = [
   { no: 1, name: 'Carbamazepine 200mg tablet', expiry: '', lot: 'PH21-79\n20072773', beginning: 0, deliveries: [{ date: '7/10/2025', qty: 100, vendor: 'NO PAPERS' }, { date: '12/12/2025', qty: 100, vendor: '' }], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 2, name: 'Chlorpromazine HCl 200mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
@@ -24,35 +32,10 @@ export const sampleMhmapRows = [
   { no: 18, name: 'Valproic acid 250mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 19, name: 'Valproic acid 500mg tablet', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
   { no: 20, name: 'Valproic acid 250mg/5ml syrup, 120ml bottle', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
-]
+] .map((item) => ({ ...item, unit: inferUnit(item.name) }))
 
 const mhmapWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
 
-export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLabel }) {
-  const [search, setSearch] = useState('')
-  const visibleRows = sampleMhmapRows.filter((item) =>
-    item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
-  )
-
-  return (
-    <div className="section-page-content mhmap-inventory-page">
-      <section className="dashboard-card regular-ledger-card" id="mhmap">
-        <div className="ledger-heading">
-          <div><span className="ledger-kicker">E-STOCK / MHMAP</span><h2>MHMAP inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
-          <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
-        </div>
-        <div className="regular-inventory-actions"><span>Sample data · workbook export</span><ExportEstockButton rows={sampleMhmapRows} activeSheet="mhmap" stockMonth={stockMonth} /></div>
-        <div className="regular-tools mhmap-search-tools" role="search" aria-label="Search MHMAP inventory items">
-          <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-        </div>
-        <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
-        {visibleRows.length === 0 && <p className="regular-empty-results">No items match your search.</p>}
-        <MonthlyStockCard rows={visibleRows} periodLabels={mhmapWeeklyRanges} monthLabel={monthLabel} />
-      </section>
-    </div>
-  )
-}
-
-function SearchIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.7" cy="8.7" r="5.7" /><path d="m13 13 4 4" /></svg>
+export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard }) {
+  return <DonationInventory stockMonth={stockMonth} onStockMonthChange={onStockMonthChange} monthLabel={monthLabel} onOpenStockCard={onOpenStockCard} inventoryType="mhmap" initialRows={sampleMhmapRows} weeklyRanges={mhmapWeeklyRanges} />
 }

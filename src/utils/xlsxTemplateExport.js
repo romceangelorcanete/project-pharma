@@ -79,6 +79,9 @@ function setCell(xml, reference, value) {
   const cellPattern = new RegExp(`<c\\b(?=[^>]*\\br="${escapedReference}")[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)`)
   const existing = xml.match(cellPattern)
   if (existing) {
+    // Keep formulas from the supplied workbook (ending balance, monthly totals,
+    // and weekly consumption) so Excel can recalculate them after opening.
+    if (/<f(?:\s|\/|>)/.test(existing[0])) return xml
     const style = existing[0].match(/\bs="(\d+)"/)?.[1]
     return xml.replace(cellPattern, cellXml(reference, value, style))
   }
@@ -88,6 +91,16 @@ function setCell(xml, reference, value) {
   if (!row) return xml
   const cell = cellXml(reference, value)
   return xml.replace(rowPattern, row[0].replace('</row>', `${cell}</row>`))
+}
+
+function clearCellValue(xml, reference) {
+  const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const cellPattern = new RegExp(`<c\\b(?=[^>]*\\br="${escapedReference}")[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)`)
+  const existing = xml.match(cellPattern)
+  if (!existing || /<f(?:\s|\/|>)/.test(existing[0])) return xml
+  const style = existing[0].match(/\bs="(\d+)"/)?.[1]
+  const styleAttribute = style ? ` s="${style}"` : ''
+  return xml.replace(cellPattern, `<c r="${reference}"${styleAttribute}/>`)
 }
 
 function excelColumn(index) {
@@ -140,12 +153,18 @@ function stockCellValues(item, rowNumber) {
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
 }
 
-function monthlyCellValues(item, rowNumber, stockMonth) {
-  const values = { B: item.name, O: Number(String(item.dpri ?? '').replace(/[^\d.-]/g, '')) || '' }
+function monthlyCellValues(item, rowNumber, stockMonth, averageMonths = 12, consumptionYear = 2026) {
+  const dpri = Number(String(item.dpri ?? '').replace(/[^\d.-]/g, '')) || 0
+  const selectedYear = Number(stockMonth?.split('-')?.[0])
+  const hasYearData = selectedYear === consumptionYear
+  const consumption = hasYearData ? Number(item.monthly) || 0 : ''
+  const values = { O: dpri || '' }
   const month = Number(stockMonth?.split('-')?.[1])
-  if (month >= 1 && month <= 12) values[excelColumn(month + 2)] = item.monthly ?? 0
-  values.Q = item.monthly ?? 0
-  values.R = item.monthly ?? 0
+  for (let monthNumber = 1; monthNumber <= 12; monthNumber += 1) {
+    const column = excelColumn(monthNumber + 2)
+    if (!hasYearData) values[column] = ''
+    else if (monthNumber === month) values[column] = consumption
+  }
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
 }
 
@@ -215,16 +234,31 @@ async function writeZip(entries) {
   return new Blob(chunks, { type: XLSX_MIME })
 }
 
-export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], stockMonth = '2026-11' } = {}) {
-  const response = await fetch('/templates/E-STOCK.xlsx')
-  if (!response.ok) throw new Error('Hindi ma-load ang E-STOCK.xlsx template.')
+export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], stockMonth = '2026-11', consumptionYear = 2026 } = {}) {
+  const response = await fetch('/templates/E-STOCK%20NOVEMBER%202026.xlsx')
+  if (!response.ok) throw new Error('Hindi ma-load ang E-STOCK NOVEMBER 2026.xlsx template.')
 
   const entries = readZipEntries(await response.arrayBuffer())
+  const workbookEntry = entries.find((candidate) => candidate.name === 'xl/workbook.xml')
+  if (workbookEntry) {
+    const bytes = await transformBytes(workbookEntry.compressedData, 'deflate-raw', DecompressionStream)
+    let workbookXml = new TextDecoder().decode(bytes)
+    workbookXml = workbookXml.replace(/<calcPr\b[^>]*\/?\s*>/, '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>')
+    workbookEntry.updatedText = workbookXml
+  }
   const sheets = [
     { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1' },
     { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1' },
     { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1' },
-    { file: 'xl/worksheets/sheet4.xml', rows: regularRows, map: (item, row) => monthlyCellValues(item, row, stockMonth), startRow: 4 },
+    {
+      file: 'xl/worksheets/sheet4.xml',
+      groups: [
+        { rows: regularRows, startRow: 4, averageMonths: 9 },
+        { rows: donationRows, startRow: 478, averageMonths: 8 },
+        { rows: mhmapRows, startRow: 589, averageMonths: 8 },
+      ],
+      map: (item, row) => monthlyCellValues(item, row, stockMonth),
+    },
   ]
 
   for (const sheet of sheets) {
@@ -237,9 +271,16 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
       xml = setCell(xml, sheet.monthTitleCell, `*${monthLabel}`)
     }
-    sheet.rows.forEach((item, index) => {
-      sheet.map(item, index + (sheet.startRow || 3)).forEach(([reference, value]) => {
-        if (value !== '' && value !== null && value !== undefined) xml = setCell(xml, reference, value)
+    const groups = sheet.groups || [{ rows: sheet.rows, startRow: sheet.startRow || 3 }]
+    groups.forEach((group) => {
+      group.rows.forEach((item, index) => {
+        const mapRow = group.averageMonths
+          ? (item, rowNumber) => monthlyCellValues(item, rowNumber, stockMonth, group.averageMonths, consumptionYear)
+          : sheet.map
+        mapRow(item, index + group.startRow).forEach(([reference, value]) => {
+          if (value === '') xml = clearCellValue(xml, reference)
+          else if (value !== null && value !== undefined) xml = setCell(xml, reference, value)
+        })
       })
     })
     entry.updatedText = xml

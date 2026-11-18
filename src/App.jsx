@@ -96,6 +96,7 @@ export default function App() {
       } catch {
         // Ignore storage cleanup failures during sign out.
       }
+      window.history.replaceState({}, "", "/");
       setAuth({ status: "ready", user: null, csrfToken: result.csrfToken });
       setPassword("");
     } catch (requestError) {
