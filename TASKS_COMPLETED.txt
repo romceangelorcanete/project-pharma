@@ -245,3 +245,12 @@ Monthly Consumption and year-based E-STOCK export - November 18, 2026
 - Enabled automatic formula recalculation when Excel opens the exported workbook.
 - Export filenames now follow the selected period, for example E-STOCK_DECEMBER_2027.xlsx.
 - Generated a 2027 export check and confirmed its December title, blank monthly input cells, and preserved calculation formulas.
+
+E-STOCK export current inventory rows only - November 18, 2026
+- Cleared stale item values from the Regular, Donation, MHMAP, and Monthly Consumption template data regions while preserving formula cells and styles.
+- Hid unused template rows so exported sheets show only the current inventory items from the app, including newly added sample items.
+- Confirmed the Regular export displays four current items and hides the remaining old template rows.
+
+Sidebar sign-out cleanup - November 18, 2026
+- Removed the duplicate Sign out control from the responsive sidebar footer.
+- Kept the signed-in user's name and role in the sidebar and retained Sign out in the top-right header.
