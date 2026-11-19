@@ -3,6 +3,7 @@ import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
 import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { getRegularDropdownOptions } from './regularDropdownOptions.js'
+import useInventoryRows from '../hooks/useInventoryRows.js'
 import './RegularInventory.css'
 import './DonationInventory.css'
 
@@ -45,7 +46,7 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
   const pageLabel = isMhmap ? 'MHMAP' : 'Donation'
   const pageClass = isMhmap ? 'mhmap-inventory-page' : 'donation-inventory-page'
   const sectionId = isMhmap ? 'mhmap' : 'donation'
-  const [rows, setRows] = useState(initialRows)
+  const [rows, setRows] = useInventoryRows(sectionId, initialRows, stockMonth)
   const [search, setSearch] = useState('')
   const [unitFilter, setUnitFilter] = useState('all')
   const [sort, setSort] = useState('default')
@@ -128,9 +129,9 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
       <section className="dashboard-card regular-ledger-card" id={sectionId}>
         <div className="ledger-heading">
           <div><span className="ledger-kicker">E-STOCK / {pageLabel.toUpperCase()}</span><h2>{pageLabel} inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
-          <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div>
+          <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span></div>
         </div>
-        <div className="regular-inventory-actions"><span>Sample only · not saved to database</span><div className="regular-toolbar-actions"><ExportEstockButton rows={rows} activeSheet={inventoryType} stockMonth={stockMonth} /><button className="regular-add-item-button" type="button" onClick={beginAddItem}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Add item</button></div></div>
+        <div className="regular-inventory-actions"><span>Sample only · not saved to database</span><div className="regular-toolbar-actions"><div className="regular-period-control"><span>Date / year</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div><ExportEstockButton rows={rows} activeSheet={inventoryType} stockMonth={stockMonth} /><button className="regular-add-item-button" type="button" onClick={beginAddItem}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Add item</button></div></div>
         <div className="regular-tools" role="search" aria-label={`Filter ${pageLabel} inventory items`}>
           <label className="regular-search"><span className="sr-only">Search Items</span><SearchIcon /><input type="search" placeholder="Search Items" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
           <label className="regular-select"><span>Unit of Measure</span><select value={unitFilter} onChange={(event) => setUnitFilter(event.target.value)}><option value="all">All units</option>{dropdownOptions.units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}</select></label>

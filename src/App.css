@@ -468,7 +468,6 @@
 .ledger-table .ledger-delivery { width: 125px; min-width: 125px; white-space: pre-line; }
 .ledger-table .ledger-qty { width: 120px; min-width: 120px; }
 .ledger-table .ledger-day { width: 42px; min-width: 42px; padding: 5px 3px; }
-.ledger-table .selected-day { background-color: #d6e9f7 !important; }
 .ledger-table .ledger-return { width: 56px; min-width: 56px; background-color: #fff4a8; color: #655b16; }
 .ledger-table .ledger-ending { width: 115px; min-width: 115px; font-weight: 700; }
 .ledger-table .ledger-month-total { width: 132px; min-width: 132px; background-color: #eaf2f8; font-weight: 700; }

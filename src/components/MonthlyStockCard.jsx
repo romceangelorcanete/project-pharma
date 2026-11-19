@@ -9,10 +9,10 @@ export default function MonthlyStockCard({ rows, periodLabels, regular = false, 
             <th rowSpan="2" className="ledger-num sticky-num">#</th><th rowSpan="2" className="ledger-item sticky-item">ITEMS</th>
             {regular && <><th rowSpan="2" className="ledger-unit">UNIT OF<br />MEASURE</th><th rowSpan="2" className="ledger-price">UNIT<br />PRICE</th><th rowSpan="2" className="ledger-price">DPRI<br />PRICE</th><th rowSpan="2" className="ledger-category">CATEGORY</th><th rowSpan="2" className="ledger-other">OTHER CATEGORY<br />(MOBCHA, YAKAP)</th></>}
             <th rowSpan="2" className="ledger-expiry">EXPIRY<br />DATE</th><th rowSpan="2" className="ledger-lot">LOT<br />NUMBER</th><th rowSpan="2" className="ledger-beginning">BEGINNING<br />BALANCE</th><th rowSpan="2" className="ledger-delivery">DELIVERY<br />DATE</th><th rowSpan="2" className="ledger-qty">QTY<br />DELIVERED</th>
-            <th colSpan={regular ? 32 : 31} className="ledger-month">{monthLabel.toUpperCase()}</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
+            <th colSpan={31} className="ledger-month">{monthLabel.toUpperCase()}</th><th rowSpan="2" className="ledger-ending">ENDING<br />BALANCE</th><th rowSpan="2" className="ledger-month-total">MONTHLY<br />CONSUMPTION</th><th colSpan="5" className="ledger-week-group">WEEKLY CONSUMPTION</th>
           </tr>
           <tr>
-            {(regular ? days.slice(0, 3) : days).map((day) => <th className={regular ? 'ledger-day' : day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{day}</th>)}
+            {(regular ? days.slice(0, 3) : days).map((day) => <th className="ledger-day" key={day}>{day}</th>)}
             {regular && days.slice(3).map((day) => <th className="ledger-day" key={day}>{day}</th>)}
             {periodLabels.map((range) => <th className="ledger-week" key={range}>{range}</th>)}
           </tr>
@@ -28,7 +28,7 @@ export default function MonthlyStockCard({ rows, periodLabels, regular = false, 
           }) : item.expiry}</td><td className="ledger-lot">{item.lot}</td><td className="ledger-beginning">{item.beginning}</td>
           <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>
           {regular && <>{days.slice(0, 3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}{days.slice(3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}</>}
-          {!regular && days.map((day) => <td className={day === 2 ? 'ledger-day selected-day' : 'ledger-day'} key={day}>{item.daily[day] || ''}</td>)}
+          {!regular && days.map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}
           <td className={`ledger-ending ${item.ending < 0 ? 'ledger-negative' : ''}`}>{item.ending}</td><td className="ledger-month-total">{item.monthly}</td>{item.weekly.map((count, index) => <td className="ledger-week" key={periodLabels[index]}>{count}</td>)}
         </tr>)}</tbody>
       </table>

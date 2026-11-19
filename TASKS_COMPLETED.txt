@@ -254,3 +254,10 @@ E-STOCK export current inventory rows only - November 18, 2026
 Sidebar sign-out cleanup - November 18, 2026
 - Removed the duplicate Sign out control from the responsive sidebar footer.
 - Kept the signed-in user's name and role in the sidebar and retained Sign out in the top-right header.
+
+Inventory report and date-aware sample export - November 19, 2026
+- Added a combined Inventory report for Regular Stocks, Donation, and MHMAP with item details, monthly consumption, weekly totals, search, and month/year selection.
+- Synced sample inventory rows across Regular, Donation, MHMAP, Inventory, and Monthly Consumption; sample month records are stored separately in the browser, and future empty months carry balances forward with zero consumption.
+- Fixed the Regular stock-card header alignment so Ending Balance, Monthly Consumption, and Weekly Consumption columns match their values.
+- Made the Inventory report heading follow the selected month/year, including the correct final day and 11:59 PM.
+- Updated the Excel export to write the same dynamic report title to the INVENTORY worksheet (sheet5).

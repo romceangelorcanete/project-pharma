@@ -3,13 +3,14 @@ import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { sampleRegularRows } from './RegularInventory.jsx'
 import { sampleDonationRows } from './DonationInventory.jsx'
 import { sampleMhmapRows } from './MhmapInventory.jsx'
+import useInventoryRows from '../hooks/useInventoryRows.js'
 import './MonthlyConsumption.css'
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const sections = [
-  { id: 'regular', label: 'Regular Stocks', rows: sampleRegularRows, averageMonths: 9 },
-  { id: 'donation', label: 'Donation', rows: sampleDonationRows, averageMonths: 8 },
-  { id: 'mhmap', label: 'MHMAP', rows: sampleMhmapRows, averageMonths: 8 },
+  { id: 'regular', label: 'Regular Stocks', averageMonths: 9 },
+  { id: 'donation', label: 'Donation', averageMonths: 8 },
+  { id: 'mhmap', label: 'MHMAP', averageMonths: 8 },
 ]
 
 function numericPrice(value) {
@@ -19,10 +20,14 @@ function numericPrice(value) {
 export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
   const [activeType, setActiveType] = useState('regular')
   const [search, setSearch] = useState('')
+  const [regularRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
+  const [donationRows] = useInventoryRows('donation', sampleDonationRows, stockMonth)
+  const [mhmapRows] = useInventoryRows('mhmap', sampleMhmapRows, stockMonth)
+  const sectionRows = { regular: regularRows, donation: donationRows, mhmap: mhmapRows }
   const [year, monthNumber] = stockMonth.split('-').map(Number)
   const yearOptions = [...new Set([2026, 2027, 2028, 2029, 2030, year])].sort((left, right) => left - right)
-  const hasSampleDataForYear = year === 2026
-  const section = sections.find((item) => item.id === activeType) || sections[0]
+  const selectedSection = sections.find((item) => item.id === activeType) || sections[0]
+  const section = { ...selectedSection, rows: sectionRows[selectedSection.id] }
   const visibleRows = useMemo(() => section.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())), [section, search])
 
   function changeYear(nextYear) {
@@ -51,14 +56,13 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
           <table className="monthly-consumption-table">
             <thead><tr><th className="monthly-consumption-number">#</th><th className="monthly-consumption-item">ITEMS</th>{monthNames.map((month) => <th key={month}>{month.slice(0, 3).toUpperCase()}</th>)}<th>DPRI<br />HIGHEST</th><th>TOTAL<br />PRICE</th><th>TOTAL<br />CONSUMPTION</th><th>AVERAGE MONTHLY<br />CONSUMPTION</th></tr></thead>
             <tbody>{visibleRows.map((item) => {
-              const consumption = hasSampleDataForYear ? Number(item.monthly) || 0 : 0
+              const consumption = Number(item.monthly) || 0
               const dpri = numericPrice(item.dpri)
               const monthlyValues = monthNames.map((_, index) => index === monthNumber - 1 ? consumption : 0)
               const totalConsumption = monthlyValues.reduce((total, value) => total + value, 0)
-              return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{hasSampleDataForYear && value ? value : ''}</td>)}<td>{dpri && hasSampleDataForYear ? dpri.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td><td>{hasSampleDataForYear ? (totalConsumption * dpri).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td><td>{hasSampleDataForYear ? totalConsumption : ''}</td><td>{hasSampleDataForYear ? (totalConsumption / section.averageMonths).toFixed(2) : ''}</td></tr>
+              return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{value || ''}</td>)}<td>{dpri ? dpri.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td><td>{(totalConsumption * dpri).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>{totalConsumption}</td><td>{(totalConsumption / section.averageMonths).toFixed(2)}</td></tr>
             })}</tbody>
           </table>
-          {!hasSampleDataForYear && <p className="monthly-consumption-empty">No sample consumption data for {year} yet.</p>}
           {visibleRows.length === 0 && <p className="monthly-consumption-empty">No items match your search.</p>}
         </div>
         <footer className="monthly-consumption-footer"><span>{section.label}</span><span>{visibleRows.length} items · {year}</span></footer>

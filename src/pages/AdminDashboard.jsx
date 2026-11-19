@@ -7,6 +7,7 @@ import { createStockCardPrintDocument } from "./stockCardPrint.js";
 import DonationInventory from "./DonationInventory.jsx";
 import MhmapInventory from "./MhmapInventory.jsx";
 import MonthlyConsumption from "./MonthlyConsumption.jsx";
+import InventoryReport from "./InventoryReport.jsx";
 const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
 const dashboardSectionKeys = [
   "overview",
@@ -630,6 +631,7 @@ export default function AdminDashboard({
 
         {activeSection === "regular" && (
           <RegularInventory
+            key={stockMonth}
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
             onOpenStockCard={openStockCard}
@@ -642,6 +644,7 @@ export default function AdminDashboard({
 
         {activeSection === "donation" && (
           <DonationInventory
+            key={`${stockMonth}-donation`}
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
             monthLabel={stockMonthLabel}
@@ -651,6 +654,7 @@ export default function AdminDashboard({
 
         {activeSection === "mhmap" && (
           <MhmapInventory
+            key={`${stockMonth}-mhmap`}
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
             monthLabel={stockMonthLabel}
@@ -663,10 +667,14 @@ export default function AdminDashboard({
         )}
 
         {activeSection === "monthly-consumption" && (
-          <MonthlyConsumption stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+          <MonthlyConsumption key={stockMonth} stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
         )}
 
-        {["inventory", "rpci-regular", "rpci-donation"].includes(activeSection) && (
+        {activeSection === "inventory" && (
+          <InventoryReport key={stockMonth} stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+        )}
+
+        {["rpci-regular", "rpci-donation"].includes(activeSection) && (
           <div className="section-page-content">
             <section className="dashboard-card estock-other-card">
               <div className="card-heading">

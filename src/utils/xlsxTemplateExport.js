@@ -277,6 +277,7 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1', dataStartRow: 3 },
     { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
     { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
+    { file: 'xl/worksheets/sheet5.xml', reportTitleCell: 'A1' },
     {
       file: 'xl/worksheets/sheet4.xml',
       groups: [
@@ -306,7 +307,13 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
       xml = setCell(xml, sheet.monthTitleCell, `*${monthLabel}`)
     }
-    const groups = sheet.groups || [{ rows: sheet.rows, startRow: sheet.startRow || 3 }]
+    if (sheet.reportTitleCell) {
+      const [year, month] = stockMonth.split('-').map(Number)
+      const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }).toUpperCase()
+      const lastDay = new Date(year, month, 0).getDate()
+      xml = setCell(xml, sheet.reportTitleCell, `INVENTORY REPORT ${monthLabel} ${lastDay}, ${year} 11:59PM`)
+    }
+    const groups = sheet.groups || (sheet.rows ? [{ rows: sheet.rows, startRow: sheet.startRow || 3 }] : [])
     groups.forEach((group) => {
       group.rows.forEach((item, index) => {
         const mapRow = group.averageMonths
