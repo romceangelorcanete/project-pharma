@@ -261,3 +261,8 @@ Inventory report and date-aware sample export - November 19, 2026
 - Fixed the Regular stock-card header alignment so Ending Balance, Monthly Consumption, and Weekly Consumption columns match their values.
 - Made the Inventory report heading follow the selected month/year, including the correct final day and 11:59 PM.
 - Updated the Excel export to write the same dynamic report title to the INVENTORY worksheet (sheet5).
+
+RPCI physical count preview and print - November 19, 2026
+- Replaced RPCI Regular and RPCI Donation placeholders with physical count report previews using their matching sample inventory rows.
+- Added a shared month/year selector that updates the report As of heading and a Print action with print-friendly layout.
+- Made Prepared by and Noted by names and positions editable in the preview; signature names use the requested underline styling.

@@ -1,0 +1,58 @@
+.rpci-page { min-width: 0; }
+.rpci-card { overflow: hidden; padding: 0; }
+.rpci-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #e6ebe7; }
+.rpci-toolbar p { margin: 5px 0 0; color: #75837b; font-size: 12px; }
+.rpci-toolbar-actions { display: flex; align-items: end; gap: 12px; }
+.rpci-toolbar-actions label { display: grid; gap: 5px; color: #738178; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.rpci-print-button { display: inline-flex; min-height: 38px; align-items: center; gap: 8px; padding: 0 15px; border: 1px solid #176345; border-radius: 7px; background: #176345; color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.rpci-print-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rpci-sheet { position: relative; max-width: 1180px; margin: 24px auto; padding: 26px 30px 24px; border: 1px solid #d7ddd9; background: #fff; box-shadow: 0 5px 20px #122d2012; color: #111; font-family: "Times New Roman", Times, serif; }
+.rpci-appendix { margin-bottom: 14px; color: #333; font-size: 12px; font-style: italic; text-align: right; }
+.rpci-sheet h1 { margin: 0; font-size: 19px; font-weight: 700; text-align: center; }
+.rpci-sheet h2 { margin: 12px 0 2px; font-size: 15px; font-weight: 700; text-align: center; }
+.rpci-as-of { margin: 10px 0 20px; font-size: 13px; font-weight: 700; text-align: center; }
+.rpci-fund { display: flex; width: 280px; align-items: baseline; gap: 6px; margin: 0 0 18px; font-size: 12px; }
+.rpci-fund span { flex: 1; height: 13px; border-bottom: 1px solid #222; }
+.rpci-accountability { margin: 0 0 8px; font-size: 11px; line-height: 1.8; }
+.rpci-accountability span { display: inline-block; min-width: 100px; border-bottom: 1px solid #333; }
+.rpci-table-wrap { max-width: 100%; overflow-x: auto; }
+.rpci-table { width: 100%; min-width: 980px; border-collapse: collapse; table-layout: fixed; font-size: 11px; text-align: center; }
+.rpci-table th, .rpci-table td { height: 30px; padding: 5px 6px; border: 1px solid #222; vertical-align: middle; white-space: pre-line; overflow-wrap: anywhere; }
+.rpci-table th { font-weight: 700; line-height: 1.2; }
+.rpci-table th.rpci-description { width: 22%; }
+.rpci-table th:nth-child(1) { width: 6%; }
+.rpci-table th:nth-child(3), .rpci-table th:nth-child(4), .rpci-table th:nth-child(5) { width: 8%; }
+.rpci-table td.rpci-item-name { text-align: left; }
+.rpci-table td.rpci-write-cell { min-width: 70px; }
+.rpci-table td.rpci-remarks { min-width: 90px; font-size: 10px; }
+.rpci-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; margin: 48px 36px 0; font-size: 11px; }
+.rpci-signatures > div { display: grid; justify-items: center; }
+.rpci-signatures span { justify-self: start; }
+.rpci-signatures i { width: 85%; height: 34px; border-bottom: 1px solid #222; }
+.rpci-signatures p { margin: 6px 0 0; }
+.rpci-signature-input { width: 85%; min-height: 24px; padding: 3px 2px; border: 0; border-radius: 0; outline: 0; background: transparent; color: #111; font: inherit; font-size: 11px; text-align: center; }
+.rpci-signature-name { margin-top: 30px; border-bottom: 1px solid #222; font-weight: 700; }
+.rpci-signature-name:focus { border-bottom: 2px solid #176345; }
+@media (max-width: 760px) {
+  .rpci-toolbar { align-items: flex-start; flex-direction: column; padding: 14px; }
+  .rpci-toolbar-actions { width: 100%; justify-content: space-between; }
+  .rpci-sheet { margin: 12px; padding: 18px 14px; }
+  .rpci-sheet h1 { font-size: 15px; }
+  .rpci-signatures { gap: 22px; margin-right: 8px; margin-left: 8px; }
+}
+@media print {
+  @page { size: landscape; margin: 10mm; }
+  body, #root { min-width: 0 !important; margin: 0 !important; background: #fff !important; }
+  body * { visibility: hidden !important; }
+  .rpci-sheet, .rpci-sheet * { visibility: visible !important; }
+  .dashboard-shell { display: block !important; min-height: 0 !important; }
+  .dashboard-sidebar, .dashboard-header, .rpci-toolbar { display: none !important; }
+  .dashboard-main { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
+  .rpci-page, .rpci-card, .rpci-sheet { display: block !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+  .rpci-table-wrap { overflow: visible !important; }
+  .rpci-table { width: 100% !important; min-width: 0 !important; font-size: 8pt !important; }
+  .rpci-table th, .rpci-table td { height: auto !important; min-width: 0 !important; padding: 4px !important; }
+  .rpci-signatures { margin-top: 32px !important; break-inside: avoid; }
+  .rpci-signature-input { min-height: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: #111 !important; font-size: 9pt !important; }
+  .rpci-signature-name { border-bottom: 1px solid #222 !important; }
+}

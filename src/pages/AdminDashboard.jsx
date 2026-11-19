@@ -8,6 +8,7 @@ import DonationInventory from "./DonationInventory.jsx";
 import MhmapInventory from "./MhmapInventory.jsx";
 import MonthlyConsumption from "./MonthlyConsumption.jsx";
 import InventoryReport from "./InventoryReport.jsx";
+import RPCIReport from "./RPCIReport.jsx";
 const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
 const dashboardSectionKeys = [
   "overview",
@@ -674,24 +675,14 @@ export default function AdminDashboard({
           <InventoryReport key={stockMonth} stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
         )}
 
-        {["rpci-regular", "rpci-donation"].includes(activeSection) && (
-          <div className="section-page-content">
-            <section className="dashboard-card estock-other-card">
-              <div className="card-heading">
-                <div>
-                  <span className="ledger-kicker">E-STOCK / SAMPLE VIEW</span>
-                  <h2>{sectionTitle}</h2>
-                  <p>UI preview</p>
-                </div>
-                <span className="section-pill">SAMPLE</span>
-              </div>
-              <p className="section-preview">
-                {sectionTitle} page layout will appear here. This menu is
-                connected to the sample navigation only for now.
-              </p>
-            </section>
-          </div>
+        {activeSection === "rpci-regular" && (
+          <RPCIReport key={`regular-${stockMonth}`} reportType="regular" stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
         )}
+
+        {activeSection === "rpci-donation" && (
+          <RPCIReport key={`donation-${stockMonth}`} reportType="donation" stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+        )}
+
       </section>
     </main>
   );
