@@ -4,8 +4,13 @@
 .monthly-consumption-heading h2 { margin: 5px 0 0; color: #253b30; font-size: 18px; }
 .monthly-consumption-heading p { margin: 5px 0 0; color: #849188; font-size: 10px; }
 .monthly-consumption-year-control { display: flex; align-items: center; gap: 14px; }
-.monthly-consumption-year-control > label { display: flex; align-items: center; gap: 8px; color: #708076; font-size: 10px; font-weight: 700; }
-.monthly-consumption-year-control select { min-width: 100px; height: 38px; padding: 0 30px 0 11px; border: 1px solid #dce5df; border-radius: 7px; appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m2.5 4.5 3.5 3 3.5-3' fill='none' stroke='%236d8375' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; color: #344a3b; font: inherit; cursor: pointer; }
+.monthly-consumption-year-control { position: relative; flex-direction: column; align-items: flex-start; gap: 3px; color: #708076; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.monthly-consumption-year-trigger { width: 90px; height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border: 1px solid #dce5df; border-radius: 7px; background: #fff; color: #344a3b; font: inherit; font-size: 11px; cursor: pointer; }
+.monthly-consumption-year-trigger svg { width: 12px; height: 12px; fill: none; stroke: #6d8375; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.monthly-consumption-year-options { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; width: 178px; max-height: 190px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 2px; overflow-y: auto; padding: 6px; border: 1px solid #dce5df; border-radius: 7px; background: #fff; box-shadow: 0 8px 22px rgba(28, 52, 39, .16); }
+.monthly-consumption-year-options-heading { grid-column: 1 / -1; padding: 3px 5px 6px; border-bottom: 1px solid #e8eeea; color: #708076; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.monthly-consumption-year-options button { width: 100%; min-height: 28px; padding: 4px 5px; border: 0; border-radius: 4px; background: transparent; color: #344a3b; font: inherit; font-size: 11px; text-align: center; cursor: pointer; }
+.monthly-consumption-year-options button:hover, .monthly-consumption-year-options button.selected { background: #eaf4ed; color: #176345; font-weight: 750; }
 .monthly-consumption-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; border-bottom: 1px solid #e8eeea; background: #fbfcfb; }
 .monthly-consumption-tabs { display: flex; align-items: center; gap: 5px; }
 .monthly-consumption-tabs button { min-height: 34px; padding: 0 13px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #63766a; font: inherit; font-size: 10px; font-weight: 650; cursor: pointer; }
@@ -34,6 +39,7 @@
   .monthly-consumption-tabs button { flex: 1; padding: 0 8px; }
   .monthly-consumption-actions { width: 100%; }
   .monthly-consumption-search { flex: 1; width: auto; }
-  .monthly-consumption-year-control { width: 100%; justify-content: space-between; }
+  .monthly-consumption-year-control { width: auto; flex: 0 0 auto; }
+  .monthly-consumption-year-control { width: auto; }
   .monthly-consumption-footer { padding: 9px 12px; }
 }

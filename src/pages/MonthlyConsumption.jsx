@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { sampleRegularRows } from './RegularInventory.jsx'
 import { sampleDonationRows } from './DonationInventory.jsx'
@@ -20,26 +20,49 @@ function numericPrice(value) {
 export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
   const [activeType, setActiveType] = useState('regular')
   const [search, setSearch] = useState('')
+  const [yearPickerOpen, setYearPickerOpen] = useState(false)
+  const yearPickerRef = useRef(null)
+  const selectedYearRef = useRef(null)
   const [regularRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const [donationRows] = useInventoryRows('donation', sampleDonationRows, stockMonth)
   const [mhmapRows] = useInventoryRows('mhmap', sampleMhmapRows, stockMonth)
   const sectionRows = { regular: regularRows, donation: donationRows, mhmap: mhmapRows }
   const [year, monthNumber] = stockMonth.split('-').map(Number)
-  const yearOptions = [...new Set([2026, 2027, 2028, 2029, 2030, year])].sort((left, right) => left - right)
+  const firstYear = Math.min(2026, year)
+  const lastYear = Math.max(2100, year)
+  const yearOptions = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index)
   const selectedSection = sections.find((item) => item.id === activeType) || sections[0]
   const section = { ...selectedSection, rows: sectionRows[selectedSection.id] }
   const visibleRows = useMemo(() => section.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())), [section, search])
 
   function changeYear(nextYear) {
     onStockMonthChange(`${nextYear}-${String(monthNumber).padStart(2, '0')}`)
+    setYearPickerOpen(false)
   }
+
+  useEffect(() => {
+    if (!yearPickerOpen) return undefined
+    selectedYearRef.current?.scrollIntoView({ block: 'nearest' })
+    const closeOnOutsideClick = (event) => {
+      if (!yearPickerRef.current?.contains(event.target)) setYearPickerOpen(false)
+    }
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setYearPickerOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [yearPickerOpen])
 
   return (
     <div className="section-page-content monthly-consumption-page">
       <section className="dashboard-card monthly-consumption-card" aria-labelledby="monthly-consumption-title">
         <header className="monthly-consumption-heading">
           <div><span className="ledger-kicker">E-STOCK / MONTHLY CONSUMPTION</span><h2 id="monthly-consumption-title">Monthly Consumption</h2><p>Annual consumption summary · {year}</p></div>
-          <div className="monthly-consumption-year-control"><span className="sample-indicator"><i /> Sample data</span><label>Year<select value={year} onChange={(event) => changeYear(Number(event.target.value))}>{yearOptions.map((option) => <option key={option} value={option}>{option}</option>)}</select></label></div>
+          <span className="sample-indicator"><i /> Sample data</span>
         </header>
 
         <div className="monthly-consumption-toolbar">
@@ -47,8 +70,17 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
             {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeType === item.id} className={activeType === item.id ? 'active' : ''} onClick={() => setActiveType(item.id)}>{item.label}</button>)}
           </div>
           <div className="monthly-consumption-actions">
+            <div className="monthly-consumption-year-control" ref={yearPickerRef}>
+              <button className="monthly-consumption-year-trigger" type="button" aria-haspopup="listbox" aria-expanded={yearPickerOpen} onClick={() => setYearPickerOpen((open) => !open)}>
+                {year}<svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2.5 4.5 3.5 3 3.5-3" /></svg>
+              </button>
+              {yearPickerOpen && <div className="monthly-consumption-year-options" role="listbox" aria-label="Select year">
+                <div className="monthly-consumption-year-options-heading">YEAR</div>
+                {yearOptions.map((option) => <button key={option} ref={option === year ? selectedYearRef : null} type="button" role="option" aria-selected={option === year} className={option === year ? 'selected' : ''} onClick={() => changeYear(option)}>{option}</button>)}
+              </div>}
+            </div>
             <label className="monthly-consumption-search"><SearchIcon /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Items" aria-label="Search Items" /></label>
-            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={2026} />
+            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} />
           </div>
         </div>
 

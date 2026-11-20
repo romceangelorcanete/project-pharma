@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
 import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { getRegularDropdownOptions } from './regularDropdownOptions.js'
 import useInventoryRows from '../hooks/useInventoryRows.js'
+import { calculateInventoryTotals } from '../utils/inventoryCalculations.js'
+import { reconcileStockCardEntries } from '../utils/stockCardEntries.js'
 import './RegularInventory.css'
 import './DonationInventory.css'
 
@@ -16,8 +18,9 @@ export const sampleDonationRows = [
 ]
 
 const donationWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
-const blankDelivery = () => ({ date: '', qty: '', vendor: '' })
-const blankForm = () => ({ name: '', unit: '', expiryDates: [''], lotNumbers: [''], beginning: '', deliveries: [blankDelivery()], daily: {}, ending: '', monthly: '', weekly: ['', '', '', '', ''] })
+const todayDateInput = () => { const today = new Date(); return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}` }
+const blankDelivery = () => ({ date: todayDateInput(), qty: '', vendor: '' })
+const blankForm = () => ({ name: '', unit: '', expiryDates: [''], lotNumbers: [''], beginning: '', deliveries: [blankDelivery()], daily: {}, stockCardEntries: [], ending: '', monthly: '', weekly: ['', '', '', '', ''] })
 
 function dateToInput(value = '') {
   const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
@@ -41,18 +44,35 @@ function expiryToStock(value = '') {
   return match[3] === '01' ? `${match[2]}/${match[1]}` : `${Number(match[2])}/${Number(match[3])}/${match[1]}`
 }
 
-export default function DonationInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard, inventoryType = 'donation', initialRows = sampleDonationRows, weeklyRanges = donationWeeklyRanges }) {
+export default function DonationInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard, stockCardReturnUpdater, inventoryType = 'donation', initialRows = sampleDonationRows, weeklyRanges = donationWeeklyRanges }) {
   const isMhmap = inventoryType === 'mhmap'
   const pageLabel = isMhmap ? 'MHMAP' : 'Donation'
   const pageClass = isMhmap ? 'mhmap-inventory-page' : 'donation-inventory-page'
   const sectionId = isMhmap ? 'mhmap' : 'donation'
   const [rows, setRows] = useInventoryRows(sectionId, initialRows, stockMonth)
+  const draftStorageKey = `pharma-inventory-form-draft:${sectionId}:${stockMonth}`
+  const [savedFormDraft] = useState(() => {
+    try { return JSON.parse(window.sessionStorage.getItem(draftStorageKey) || 'null') } catch { return null }
+  })
   const [search, setSearch] = useState('')
   const [unitFilter, setUnitFilter] = useState('all')
   const [sort, setSort] = useState('default')
-  const [itemFormOpen, setItemFormOpen] = useState(false)
-  const [editingNo, setEditingNo] = useState(null)
-  const [itemForm, setItemForm] = useState(blankForm)
+  const [itemFormOpen, setItemFormOpen] = useState(() => Boolean(savedFormDraft?.open))
+  const [editingNo, setEditingNo] = useState(() => savedFormDraft?.editingNo ?? null)
+  const [itemForm, setItemForm] = useState(() => savedFormDraft?.itemForm || blankForm())
+  const calculatedTotals = calculateInventoryTotals(itemForm, weeklyRanges)
+  useEffect(() => {
+    try {
+      if (itemFormOpen) window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ open: true, editingNo, itemForm }))
+      else window.sessionStorage.removeItem(draftStorageKey)
+    } catch { /* Keep the form usable when browser storage is unavailable. */ }
+  }, [draftStorageKey, itemFormOpen, editingNo, itemForm])
+  useEffect(() => {
+    if (!stockCardReturnUpdater) return undefined
+    const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: dateToInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries }))
+    stockCardReturnUpdater.current = updateDraft
+    return () => { if (stockCardReturnUpdater.current === updateDraft) stockCardReturnUpdater.current = null }
+  }, [stockCardReturnUpdater])
   const dropdownOptions = useMemo(getRegularDropdownOptions, [])
   const visibleRows = rows
     .filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
@@ -73,7 +93,7 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
       expiryDates: expiryDates.length ? expiryDates : [''],
       lotNumbers: String(item.lot || '').split('\n').filter(Boolean).length ? String(item.lot || '').split('\n').filter(Boolean) : [''], beginning: item.beginning ?? '',
       deliveries: item.deliveries?.length ? item.deliveries.map((delivery) => ({ date: dateToInput(delivery.date || ''), qty: delivery.qty ?? '', vendor: delivery.vendor || '' })) : [blankDelivery()],
-      daily: { ...(item.daily || {}) }, ending: item.ending ?? '', monthly: item.monthly ?? '',
+      daily: { ...(item.daily || {}) }, stockCardEntries: item.stockCardEntries || [], ending: item.ending ?? '', monthly: item.monthly ?? '',
       weekly: weeklyRanges.map((_, index) => item.weekly?.[index] ?? 0),
     })
     setItemFormOpen(true)
@@ -91,18 +111,19 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
     event.preventDefault()
     const beginning = Number(itemForm.beginning) || 0
     const deliveries = itemForm.deliveries
-      .filter((delivery) => delivery.date || delivery.qty || delivery.vendor.trim())
+      .filter((delivery) => (delivery.qty !== '' && delivery.qty != null) || delivery.vendor.trim())
       .map((delivery) => ({ date: dateToStockValue(delivery.date), qty: Number(delivery.qty) || 0, vendor: delivery.vendor.trim() }))
     const daily = Object.fromEntries(Object.entries(itemForm.daily).map(([day, amount]) => [day, Number(amount) || 0]))
-    const dailyTotal = Object.values(daily).reduce((total, amount) => total + amount, 0)
+    const calculatedTotals = calculateInventoryTotals({ ...itemForm, beginning, deliveries, daily }, weeklyRanges)
     const newItem = {
       no: editingNo ?? Math.max(0, ...rows.map((item) => Number(item.no) || 0)) + 1,
       name: itemForm.name.trim(), unit: itemForm.unit,
       expiry: itemForm.expiryDates.map((date) => expiryToStock(date)).filter(Boolean).join('\n'),
       lot: itemForm.lotNumbers.map((lot) => lot.trim()).filter(Boolean).join('\n'), beginning, deliveries, daily,
-      ending: itemForm.ending === '' ? beginning + deliveries.reduce((sum, delivery) => sum + delivery.qty, 0) - dailyTotal : Number(itemForm.ending) || 0,
-      monthly: itemForm.monthly === '' ? dailyTotal : Number(itemForm.monthly) || 0,
-      weekly: weeklyRanges.map((_, index) => Number(itemForm.weekly[index]) || 0),
+      stockCardEntries: reconcileStockCardEntries({ ...itemForm, beginning, deliveries, daily }, stockMonth),
+      ending: calculatedTotals.ending,
+      monthly: calculatedTotals.monthly,
+      weekly: calculatedTotals.weekly,
     }
     setRows((current) => editingNo === null ? [...current, newItem] : current.map((item) => item.no === editingNo ? newItem : item))
     setSearch('')
@@ -151,12 +172,12 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
             <label>Beginning balance<input type="number" min="0" step="1" value={itemForm.beginning} onChange={(event) => updateForm('beginning', event.target.value)} placeholder="0" /></label>
             <fieldset className="regular-lots-fieldset"><legend>Lot numbers</legend><div className="regular-lots-list">{itemForm.lotNumbers.map((lot, index) => <div className="regular-lot-fields" key={index}><label><span>{index === 0 ? 'Lot number' : `Lot number ${index + 1}`}</span><input value={lot} onChange={(event) => updateLotNumber(index, event.target.value)} placeholder="Lot number" /></label>{itemForm.lotNumbers.length > 1 && <button type="button" className="regular-remove-delivery" aria-label={`Remove lot number ${index + 1}`} onClick={() => setItemForm((current) => ({ ...current, lotNumbers: current.lotNumbers.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, lotNumbers: [...current.lotNumbers, ''] }))}>+ Add lot number</button></div></fieldset>
             <fieldset className="regular-expiries-fieldset"><legend>Expiry dates</legend><div className="regular-expiries-list">{itemForm.expiryDates.map((expiry, index) => <div className="regular-expiry-fields" key={index}><label><span>{index === 0 ? 'Expiry date' : `Expiry date ${index + 1}`}</span><input type="date" value={expiry} onChange={(event) => setItemForm((current) => ({ ...current, expiryDates: current.expiryDates.map((date, rowIndex) => rowIndex === index ? event.target.value : date) }))} /></label>{itemForm.expiryDates.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, expiryDates: current.expiryDates.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, expiryDates: [...current.expiryDates, ''] }))}>+ Add expiry date</button></div></fieldset>
-            <fieldset className="regular-deliveries-fieldset"><legend>Deliveries</legend>{itemForm.deliveries.map((delivery, index) => <div className="regular-delivery-fields" key={index}><label>Delivery date<input type="date" value={delivery.date} onChange={(event) => updateDelivery(index, 'date', event.target.value)} /></label><label>Qty delivered<input type="number" min="0" step="1" value={delivery.qty} onChange={(event) => updateDelivery(index, 'qty', event.target.value)} placeholder="0" /></label><label>Supplier<input value={delivery.vendor} onChange={(event) => updateDelivery(index, 'vendor', event.target.value)} placeholder="Supplier name" /></label>{itemForm.deliveries.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: current.deliveries.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: [...current.deliveries, blankDelivery()] }))}>+ Add delivery</button></fieldset>
-            <label>Ending balance<input type="number" min="0" step="1" value={itemForm.ending} onChange={(event) => updateForm('ending', event.target.value)} placeholder="Auto-calculate from balance, deliveries, and consumption" /></label>
-            <label>Monthly consumption<input type="number" min="0" step="1" value={itemForm.monthly} onChange={(event) => updateForm('monthly', event.target.value)} placeholder="0" /></label>
+            <fieldset className="regular-deliveries-fieldset"><legend>Deliveries</legend>{itemForm.deliveries.map((delivery, index) => <div className="regular-delivery-fields" key={index}><label>Delivery date<input type="date" value={delivery.date} onChange={(event) => updateDelivery(index, 'date', event.target.value)} /></label><label>Qty delivered<input type="number" min="0" step="1" value={delivery.qty} onChange={(event) => updateDelivery(index, 'qty', event.target.value)} placeholder="0" /></label><label>Supplier<input value={delivery.vendor} onChange={(event) => updateDelivery(index, 'vendor', event.target.value)} placeholder="Supplier name" /></label>{itemForm.deliveries.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: current.deliveries.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: [...current.deliveries, { ...blankDelivery(), date: todayDateInput() }] }))}>+ Add delivery</button></fieldset>
+            <label>Ending balance<input type="number" value={calculatedTotals.ending} readOnly /></label>
+            <label>Monthly consumption<input type="number" value={calculatedTotals.monthly} readOnly /></label>
             <fieldset className="regular-daily-fieldset"><legend>Daily consumption · days 1–31</legend><div className="regular-daily-grid">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <label key={day}><span>{day}</span><input aria-label={`Day ${day} consumption`} type="number" min="0" step="1" value={itemForm.daily[day] ?? ''} onChange={(event) => setItemForm((current) => ({ ...current, daily: { ...current.daily, [day]: event.target.value } }))} /></label>)}</div></fieldset>
-            <fieldset className="regular-weekly-fieldset"><legend>Weekly consumption</legend><div>{weeklyRanges.map((range, index) => <label key={range}>{range}<input type="number" min="0" step="1" value={itemForm.weekly[index]} onChange={(event) => setItemForm((current) => ({ ...current, weekly: current.weekly.map((qty, weeklyIndex) => weeklyIndex === index ? event.target.value : qty) }))} /></label>)}</div></fieldset>
-            <div className="regular-item-form-actions"><button type="button" className="regular-stockcards-button" onClick={() => { const selected = rows.find((item) => item.no === editingNo) || rows[0]; setItemFormOpen(false); onOpenStockCard?.(selected, stockMonth, inventoryType) }}>Stock Cards</button>{editingNo !== null && <button type="button" className="regular-remove-delivery donation-delete-button" onClick={deleteItem}>Delete item</button>}<button type="button" className="regular-item-cancel" onClick={() => { setItemFormOpen(false); setEditingNo(null) }}>Cancel</button><button type="submit" className="regular-add-item-button">{editingNo === null ? 'Add sample item' : 'Save sample changes'}</button></div>
+            <fieldset className="regular-weekly-fieldset"><legend>Weekly consumption</legend><div>{weeklyRanges.map((range, index) => <label key={range}>{range}<input type="number" value={calculatedTotals.weekly[index]} readOnly /></label>)}</div></fieldset>
+            <div className="regular-item-form-actions"><button type="button" className="regular-stockcards-button" onClick={() => { const saved = rows.find((item) => item.no === editingNo) || rows[0] || {}; const deliveries = itemForm.deliveries.filter((delivery) => (delivery.qty !== '' && delivery.qty != null) || delivery.vendor.trim()).map((delivery) => ({ date: delivery.date, qty: Number(delivery.qty) || 0, vendor: delivery.vendor.trim() })); const daily = Object.fromEntries(Object.entries(itemForm.daily).map(([day, amount]) => [day, Number(amount) || 0])); const selected = { ...saved, no: editingNo ?? saved.no, name: itemForm.name, unit: itemForm.unit, beginning: Number(itemForm.beginning) || 0, deliveries, daily, stockCardEntries: reconcileStockCardEntries({ ...itemForm, deliveries, daily }, stockMonth), ending: calculatedTotals.ending, monthly: calculatedTotals.monthly, weekly: calculatedTotals.weekly }; const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: dateToInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries })); onOpenStockCard?.(selected, stockMonth, inventoryType, updateDraft) }}>Stock Cards</button>{editingNo !== null && <button type="button" className="regular-remove-delivery donation-delete-button" onClick={deleteItem}>Delete item</button>}<button type="button" className="regular-item-cancel" onClick={() => { setItemFormOpen(false); setEditingNo(null) }}>Cancel</button><button type="submit" className="regular-add-item-button">{editingNo === null ? 'Add sample item' : 'Save sample changes'}</button></div>
           </form>
         </section>
       </div>}

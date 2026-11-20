@@ -276,4 +276,17 @@ How to run / deploy (PC = Admin, Laptop = Pharmacist) - November 20, 2026
   - The PHP server on port 8000 and Apache are not needed; keep PHP bound to 127.0.0.1.
   - If the tunnel fails with "connection forcibly closed" or "Client.Timeout exceeded" on a hotspot network (192.168.137.x), switch to another WiFi or mobile data, or set DNS to 1.1.1.1 / 1.0.0.1 and run ipconfig /flushdns.
   - Back up the database regularly: phpMyAdmin -> Export.
- 
+
+Stock Card editor and inventory calculations - November 20, 2026
+- Updated Regular, Donation, and MHMAP Stock Cards to open in-app and return to the matching inventory section without closing the item edit form.
+- Made Reference, Receipt Qty., Issuance Qty., Office, and No. of Days to Consume editable directly in the Stock Card preview; new transaction rows receive today's date automatically and append at the bottom.
+- Added an editable Beginning balance row. Stock Card running balance uses Beginning balance + Receipt (Qty. Delivered) - Issuance Qty.; inventory ending balance, monthly consumption, and weekly totals recalculate from the draft.
+- Synced Stock Card edits back into the open Regular, Donation, and MHMAP item form. Deleting or editing a delivery in the form also updates the Stock Card, so removed deliveries such as 100 OAK do not remain in the ledger.
+- Preserved transaction order so a newly added delivery appears below existing movements, including same-day issuance rows.
+- Set the default delivery date to today's local date in Regular, Donation, and MHMAP, including the initial delivery field and added delivery rows; the date remains editable.
+- Added session draft persistence for item forms, selected Stock Card item/period/return section, and Stock Card row edits, so refresh keeps the current item and unsaved edit available when returning to inventory.
+- Added a full border around the upper Stock Card header and moved Back and Print card actions to the top-right above the card.
+
+RPCI Noted by signature default - November 20, 2026
+- Set the editable Noted by defaults to Jeremie V. Villanueva-San Juan, RPh and PHARMACIST III.
+

@@ -36,6 +36,6 @@ export const sampleMhmapRows = [
 
 const mhmapWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
 
-export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard }) {
-  return <DonationInventory stockMonth={stockMonth} onStockMonthChange={onStockMonthChange} monthLabel={monthLabel} onOpenStockCard={onOpenStockCard} inventoryType="mhmap" initialRows={sampleMhmapRows} weeklyRanges={mhmapWeeklyRanges} />
+export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard, stockCardReturnUpdater }) {
+  return <DonationInventory stockMonth={stockMonth} onStockMonthChange={onStockMonthChange} monthLabel={monthLabel} onOpenStockCard={onOpenStockCard} stockCardReturnUpdater={stockCardReturnUpdater} inventoryType="mhmap" initialRows={sampleMhmapRows} weeklyRanges={mhmapWeeklyRanges} />
 }

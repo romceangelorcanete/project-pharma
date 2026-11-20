@@ -107,33 +107,50 @@ function replaceCellValue(xml, reference, value) {
   return row ? xml.replace(rowPattern, row[0].replace('</row>', `${cellXml(reference, value)}</row>`)) : xml
 }
 
-function clearCellValue(xml, reference) {
-  const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const cellPattern = new RegExp(`<c\\b(?=[^>]*\\br="${escapedReference}")[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)`)
-  const existing = xml.match(cellPattern)
-  if (!existing || /<f(?:\s|\/|>)/.test(existing[0])) return xml
-  const style = existing[0].match(/\bs="(\d+)"/)?.[1]
-  const styleAttribute = style ? ` s="${style}"` : ''
-  return xml.replace(cellPattern, `<c r="${reference}"${styleAttribute}/>`)
+function applyCellUpdates(xml, updates, replaceFormulas = false) {
+  const pending = new Map(updates)
+  xml = xml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, (existing) => {
+    const reference = existing.match(/\br="([A-Z]+\d+)"/)?.[1]
+    if (!reference || !pending.has(reference)) return existing
+    const value = pending.get(reference)
+    pending.delete(reference)
+    if (!replaceFormulas && /<f(?:\s|\/|>)/.test(existing)) return existing
+    const style = existing.match(/\bs="(\d+)"/)?.[1]
+    if (value === '' || value === null || value === undefined) return `<c r="${reference}"${style ? ` s="${style}"` : ''}/>`
+    return cellXml(reference, value, style)
+  })
+
+  // Most workbook cells already exist. Fall back to the single-cell writer
+  // only for the small number of mapped cells missing from the template.
+  for (const [reference, value] of pending) {
+    if (value === null || value === undefined) continue
+    xml = replaceFormulas ? replaceCellValue(xml, reference, value) : setCell(xml, reference, value)
+  }
+  return xml
 }
 
 function clearEmptyReportFields(xml, groups) {
+  const updates = new Map()
   for (const group of groups) {
     for (let row = group.startRow; row <= group.endRow; row += 1) {
       const item = group.rows[row - group.startRow]
       for (const [column, getValue] of Object.entries(group.fields)) {
         if (String(getValue(item) ?? '').trim()) continue
-        const reference = `${column}${row}`
-        const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const cellPattern = new RegExp(`<c\\b(?=[^>]*\\br="${escapedReference}")[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)`)
-        const existing = xml.match(cellPattern)
-        if (!existing) continue
-        const style = existing[0].match(/\bs="(\d+)"/)?.[1]
-        xml = xml.replace(cellPattern, `<c r="${reference}"${style ? ` s="${style}"` : ''}/>`)
+        updates.set(`${column}${row}`, '')
       }
     }
   }
-  return xml
+  return applyCellUpdates(xml, updates, true)
+}
+
+function clearReferenceErrors(xml) {
+  return xml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, (cell) => {
+    if (!/#REF!/.test(cell)) return cell
+    const reference = cell.match(/\br="([A-Z]+\d+)"/)?.[1]
+    if (!reference) return cell
+    const style = cell.match(/\bs="(\d+)"/)?.[1]
+    return `<c r="${reference}"${style ? ` s="${style}"` : ''}/>`
+  })
 }
 
 const inventoryReportGroups = (regularRows, donationRows, mhmapRows) => [
@@ -354,6 +371,7 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     {
       file: 'xl/worksheets/sheet5.xml',
       blankGroups: inventoryReportGroups(regularRows, donationRows, mhmapRows),
+      clearReferenceErrors: true,
       reportTitleCell: 'A1',
       sectionTitles: [{ cell: 'A476', value: 'DONATION' }],
     },
@@ -392,16 +410,19 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     if (sheet.blankGroups) {
       xml = clearEmptyReportFields(xml, sheet.blankGroups)
     }
+    if (sheet.clearReferenceErrors) xml = clearReferenceErrors(xml)
     if (sheet.rpciGroups) {
+      const updates = new Map()
       for (const group of sheet.rpciGroups) {
         for (let row = group.startRow; row <= group.endRow; row += 1) {
           const item = group.rows[row - group.startRow]
           const values = rpciCellValues(item)
           Object.entries(values).forEach(([column, value]) => {
-            xml = replaceCellValue(xml, `${column}${row}`, value)
+            updates.set(`${column}${row}`, value)
           })
         }
       }
+      xml = applyCellUpdates(xml, updates, true)
     }
     if (sheet.monthTitleCell) {
       const [year, month] = stockMonth.split('-').map(Number)
@@ -419,17 +440,18 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       xml = setCell(xml, cell, value)
     })
     const groups = sheet.groups || (sheet.rows ? [{ rows: sheet.rows, startRow: sheet.startRow || 3 }] : [])
+    const cellUpdates = new Map()
     groups.forEach((group) => {
       group.rows.forEach((item, index) => {
         const mapRow = group.averageMonths
           ? (item, rowNumber) => monthlyCellValues(item, rowNumber, stockMonth, group.averageMonths, consumptionYear)
           : sheet.map
         mapRow(item, index + group.startRow).forEach(([reference, value]) => {
-          if (value === '') xml = clearCellValue(xml, reference)
-          else if (value !== null && value !== undefined) xml = setCell(xml, reference, value)
+          if (value !== null && value !== undefined) cellUpdates.set(reference, value)
         })
       })
     })
+    xml = applyCellUpdates(xml, cellUpdates)
     entry.updatedText = xml
   }
   return writeZip(entries)

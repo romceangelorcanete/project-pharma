@@ -25,8 +25,8 @@ export default function RPCIReport({ reportType, stockMonth, onStockMonthChange 
   const [rows] = useInventoryRows(section, fallbackRows, stockMonth)
   const [preparedBy, setPreparedBy] = useState('Juliennevi J. Bautista, RPh')
   const [preparedByPosition, setPreparedByPosition] = useState('Pharmacist I')
-  const [notedBy, setNotedBy] = useState('Joelle C. Custodio, RPh')
-  const [notedByPosition, setNotedByPosition] = useState('OIC - Pharmacist I')
+  const [notedBy, setNotedBy] = useState('Jeremie V. Villanueva-San Juan, RPh')
+  const [notedByPosition, setNotedByPosition] = useState('PHARMACIST III')
   const [year, month] = stockMonth.split('-').map(Number)
   const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const stockLabel = isDonation ? 'DONATION STOCK' : 'REGULAR STOCK'
