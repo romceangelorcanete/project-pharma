@@ -1,21 +1,21 @@
 JVGH PHARMACY INVENTORY SYSTEM - TASK UPDATE
 Updated: November 14, 2026
-
+ 
 COMPLETED
-
+ 
 Dashboard and navigation
 - Added the admin dashboard overview with summary cards, stock activity, recent activity, and team access panels.
 - Added the E-STOCK submenu for Regular, Donation, and MHMAP.
 - Added workspace navigation for Monthly Consumption, Inventory, RPCI Regular, RPCI Donation, and User Management.
 - Kept Overview separate from the inventory forms; selecting an E-STOCK submenu opens its own section.
 - Preserved the selected dashboard section across a page refresh.
-
+ 
 Inventory screens
 - Added Regular, Donation, and MHMAP monthly stock card screens based on the supplied spreadsheet references.
 - Added a Jan-Dec month/year picker to Regular, Donation, and MHMAP; all three sections share the selected month and update their table headings.
 - Kept the table layout horizontally scrollable so the many inventory columns remain usable.
 - Stock card rows and dashboard figures are currently sample data; the spreadsheet has not been imported into the database.
-
+ 
 User Management
 - Added the user list with ID, full name, username, role, status, creation date, and row actions.
 - Added Add, Edit, and Delete flows, including role and active status fields.
@@ -23,221 +23,199 @@ User Management
 - Kept the database schema unchanged.
 - Moved the user management UI and its styles into src/pages/UserManagement.jsx and src/pages/UserManagement.css.
 - Moved shared API request helpers into src/services/api.js; App.jsx imports the UserManagement component.
-
+ 
 Responsive sidebar
 - Added a hide/show toggle in the sidebar beside the JVGH Pharmacy logo.
 - Collapsed sidebar keeps an icon rail visible instead of disappearing.
 - On small screens, the expanded menu opens as a drawer; selecting a section returns to the icon rail.
-
+ 
 CURRENT NOTES
 - User accounts use the live PHP/database connection.
 - Inventory screens and overview metrics remain sample UI data.
 - No database schema changes or spreadsheet data imports were made as part of this work.
-
+ 
 VERIFICATION
 - `npm run build` completed successfully after the User Management component refactor.
-
+ 
 Donation and MHMAP page recovery - November 15, 2026
 - Fixed blank Donation and MHMAP screens by restoring the shared month label used by the dashboard.
 - Kept Donation and MHMAP as separate page components with their own CSS files, following the Regular page structure and shared stock-card styling.
 - Updated the requested backup TXT with the restored page and dashboard source, styles, and components; preserved the earlier backup content.
 - Confirmed `npm run build` completed successfully.
 - No database changes; Donation and MHMAP continue to use sample inventory data.
-
+ 
 Donation and MHMAP search - November 15, 2026
 - Added a Search Items field to Donation and MHMAP, matching the Regular search control and filtering sample rows by item name as the user types.
 - Added an empty-results message when no item names match.
-
+ 
 Dashboard page URLs - November 15, 2026
 - Added path-based navigation for Dashboard and workspace pages (for example, /dashboard, /regular, /donation, and /mhmap).
 - Browser Back and Forward update both the URL and the visible dashboard section.
-
+ 
 User Management edit URL - November 15, 2026
 - Edit actions open the selected account at /user-management/{id}/edit while keeping the existing edit form.
 - Directly opening an edit URL loads the matching account and opens the edit form.
 - Browser Back and form close return to /user-management; Browser Forward restores the edit URL and form.
 - User Management continues using the existing PHP API and pharma_inventory database.
-
+ 
 User Management Add user icon - November 15, 2026
 - Replaced the text plus character with a consistently rendered inline SVG icon.
 - Adjusted button layout and icon spacing.
-
+ 
 Regular Add item sample search behavior - November 15, 2026
 - Fixed Add item so submitting a sample row clears the Search Items field and resets filters, showing all inventory rows alongside the new item.
 - Kept added rows in local page state only; no database changes.
-
+ 
 Regular inventory sample row editing - November 15, 2026
 - Clicking an item name in the Regular stock card opens an edit form populated with that sample item.
 - The form includes the Regular stock-card fields: item details, multiple deliveries, daily consumption (days 1-31), SL RET, ending balance, monthly consumption, and all weekly consumption periods.
 - Saving updates the selected row in local page state only; no database changes.
 - `npm run build` completed successfully.
-
+ 
 Sidebar Stock Cards shortcut - November 15, 2026
 - Restored the E-STOCK submenu label and added a separate Stock Cards shortcut that opens Regular inventory.
 - Positioned Stock Cards below the E-STOCK submenu and above Monthly Consumption; it remains available in the collapsed responsive sidebar.
 - Added a Stock Cards return action to the Regular sample edit form.
-
+ 
 Regular expiry date year colors - November 16, 2026
 - Rendered each Regular expiry date separately so mixed years in one cell are colored independently.
 - Current calendar year is green, next calendar year is red, and dates beyond next year stay white.
 - `npm run build` completed successfully.
-
+ 
 Regular sample item multiple expiry dates - November 16, 2026
 - Added repeatable expiry date entries to the Regular Add/Edit item form, alongside repeatable delivery entries.
 - Saved multiple expiry dates as separate values so year-based green/red/white coloring applies independently in the stock card.
 - `npm run build` completed successfully.
-
+ 
 Regular expiry date picker - November 16, 2026
 - Changed expiry date entries in the Regular Add/Edit item form to native calendar date pickers.
 - Existing month/year expiries load as the first day of that month and save back in MM/YYYY format; full dates retain their selected day.
 - `npm run build` completed successfully.
-
+ 
 Regular expiry picker compact layout - November 16, 2026
 - Shortened each expiry date picker to a compact field and placed multiple expiry inputs and the Add expiry date action on one wrapping row.
 - `npm run build` completed successfully.
-
+ 
 Regular navigation focus - November 16, 2026
 - Removed the duplicate Stock Cards shortcut from the responsive sidebar so selecting E-STOCK > Regular highlights Regular only.
 - Kept the E-STOCK submenu and the Stock Cards return button within the Regular item form.
 - Restored the Stock Cards shortcut in the sidebar without an active state tied to Regular, preventing both entries from highlighting together.
-
+ 
 Stock Cards sample view - November 16, 2026
 - Changed the sidebar Stock Cards button to open its own sample view route instead of navigating to Regular.
 - Kept Regular, Donation, and MHMAP under the separate E-STOCK submenu.
 - `npm run build` completed successfully.
-
+ 
 Live dashboard date and time - November 16, 2026
 - Added a live header clock showing weekday, 12-hour time with seconds, and uppercase month/day/year.
 - Clock uses the browser's local date/time and updates every second, including responsive layout styling.
 - `npm run build` completed successfully.
-
+ 
 Regular item form dropdowns - November 17, 2026
 - Changed Unit of Measure and Category to styled dropdowns in the Regular Add/Edit sample form using the provided option lists.
 - Preserved existing values when editing an item, even if they are not in the predefined list.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Regular inventory filter dropdown options - November 17, 2026
 - Updated the Unit of Measure and Category filters above the Regular table to show the complete preset lists instead of only values currently present in sample rows.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Regular Other Category dropdown - November 17, 2026
 - Replaced the free-text Other category field in the Regular sample Add/Edit form with options for MOBCHA, YAKAP, OR, HIGH ALERT, and NONE.
 - Preserved existing custom values while editing.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 JVGH Pharmacy brand icons - November 17, 2026
 - Added the pharmacy seal image to the dashboard sidebar brand and set it as the browser tab favicon.
 - Updated the browser title to JVGH Pharmacy.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Regular inventory Excel export - November 17, 2026
 - Added an Export Excel action to the Regular inventory toolbar.
 - Generates a valid .xlsx workbook in the browser with all Regular sample rows, inventory fields, multiple delivery entries, daily consumption, and weekly totals; export is independent of current search/filter visibility.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Regular dropdown option management - November 17, 2026
 - Added a Dropdown options subpage under E-STOCK in the sidebar to add/delete Regular Unit of Measure and Category choices.
 - Connected the management page to Regular filters and Add/Edit dropdowns; option lists persist in browser localStorage, with a Restore defaults action.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Drop Options sidebar placement - November 17, 2026
 - Moved Drop Options out of the E-STOCK submenu into its own responsive sidebar button immediately after Monthly Consumption.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Regular stock card sample view - November 17, 2026
 - Added a Stock Card screen matching the provided ledger format with item/stock details and Date, Reference, Receipt, Issuance, Balance, and Days to Consume columns.
 - Connected the sidebar Stock Cards button and the Regular item form action to the card view; the form layout remains unchanged.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card print preview - November 17, 2026
 - Removed the Stock Cards shortcut from the sidebar.
 - The Stock Cards action in the Regular item form now opens a print-ready card for the selected item and launches the browser print preview automatically.
 - Added print styling to exclude the dashboard sidebar/header and retain the stock card sheet; Regular form layout remains unchanged.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock card print preview content fix - November 17, 2026
 - Made the stock card sheet explicitly visible and positioned it as the sole print content so browser print preview includes the supplied card layout.
 - Added a manual Print card action and increased the automatic print delay to allow the rendered sheet to settle.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock card print layout alignment - November 17, 2026
 - Set explicit balanced column widths and consistent dark grid borders for the Stock Card table.
 - Added evenly sized blank ledger rows to preserve the reference stock-card sheet appearance and improve page fill/readability in print preview.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card print preview loading fix - November 17, 2026
 - Removed fixed positioning from the printable sheet to prevent print pagination/rendering stalls; the card now prints in normal page flow.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card preview render performance - November 17, 2026
 - Changed the Regular form Stock Cards action to open a standalone print tab containing only the stock card HTML, avoiding printing the full React dashboard.
 - Print preview starts after the standalone document loads; included a manual Print card control as fallback.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card preview no longer auto-launches print dialog - November 17, 2026
 - Removed the automatic window.print call from the standalone preview so it does not block the app while the browser is still rendering its print preview.
 - Stock card now loads as a stable printable preview tab; Print card is started by the user after the sheet is visible.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock card print header title cleanup - November 17, 2026
 - Cleared the standalone stock card document title so the browser no longer prints the item name centered above the form.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock card print tab title - November 17, 2026
 - Replaced the blank printable document title with JVGH Pharmacy so browser print headers no longer show about:blank or the item name.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card preview editable rows - November 17, 2026
 - Made six stock-card ledger rows directly editable in the standalone preview, with date input pickers and automatic current-date fill when starting a blank row.
 - Balance recalculates automatically from beginning balance and edited receipt/issuance quantities; remaining rows stay blank for printing.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card automatic date without picker - November 17, 2026
 - Removed the date picker from the six editable stock-card rows and made date fields read-only.
 - Automatically stamps today's date on the first available row and when a user starts another blank row; existing ledger dates are preserved.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card expanded editable quantity rows - November 17, 2026
 - Expanded the stock-card preview to 20 editable rows, leaving populated transactions at the top and editable blank quantity rows at the bottom for repeated entries such as 1, 1, 1.
 - Automatic dates and running balance behavior retained.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card add rows dynamically - November 17, 2026
 - Added an Add row control to extend the stock card beyond its initial 20 rows; appended rows appear at the bottom with today's date and automatic running balance.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Stock Card automatic bottom rows - November 17, 2026
 - Removed the Add row button; typing in the last row now automatically appends a new editable row below it.
 - Automatic date stamping and running balance remain enabled.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Regular SL RET removal and day 2 highlight - November 17, 2026
 - Removed SL RET from the Regular monthly stock-card table, item editor, and Excel export.
 - Removed the blue selected-day styling from day 2 on Regular while preserving other inventory views.
-- 
-pm run build completed successfully.
-
+- `npm run build` completed successfully.
+ 
 Monthly Consumption and year-based E-STOCK export - November 18, 2026
 - Added a Monthly Consumption page with Regular Stocks, Donation, and MHMAP tabs, Jan-Dec columns, and a selectable year.
 - Kept the sample consumption figures tied to 2026; for 2027, monthly input cells are cleared while workbook formulas remain in place.
@@ -245,24 +223,57 @@ Monthly Consumption and year-based E-STOCK export - November 18, 2026
 - Enabled automatic formula recalculation when Excel opens the exported workbook.
 - Export filenames now follow the selected period, for example E-STOCK_DECEMBER_2027.xlsx.
 - Generated a 2027 export check and confirmed its December title, blank monthly input cells, and preserved calculation formulas.
-
+ 
 E-STOCK export current inventory rows only - November 18, 2026
 - Cleared stale item values from the Regular, Donation, MHMAP, and Monthly Consumption template data regions while preserving formula cells and styles.
 - Hid unused template rows so exported sheets show only the current inventory items from the app, including newly added sample items.
 - Confirmed the Regular export displays four current items and hides the remaining old template rows.
-
+ 
 Sidebar sign-out cleanup - November 18, 2026
 - Removed the duplicate Sign out control from the responsive sidebar footer.
 - Kept the signed-in user's name and role in the sidebar and retained Sign out in the top-right header.
-
+ 
 Inventory report and date-aware sample export - November 19, 2026
 - Added a combined Inventory report for Regular Stocks, Donation, and MHMAP with item details, monthly consumption, weekly totals, search, and month/year selection.
 - Synced sample inventory rows across Regular, Donation, MHMAP, Inventory, and Monthly Consumption; sample month records are stored separately in the browser, and future empty months carry balances forward with zero consumption.
 - Fixed the Regular stock-card header alignment so Ending Balance, Monthly Consumption, and Weekly Consumption columns match their values.
 - Made the Inventory report heading follow the selected month/year, including the correct final day and 11:59 PM.
 - Updated the Excel export to write the same dynamic report title to the INVENTORY worksheet (sheet5).
-
+ 
 RPCI physical count preview and print - November 19, 2026
 - Replaced RPCI Regular and RPCI Donation placeholders with physical count report previews using their matching sample inventory rows.
 - Added a shared month/year selector that updates the report As of heading and a Print action with print-friendly layout.
 - Made Prepared by and Noted by names and positions editable in the preview; signature names use the requested underline styling.
+ 
+How to run / deploy (PC = Admin, Laptop = Pharmacist) - November 20, 2026
+- Setup: the PC runs everything (React + Vite, PHP API, XAMPP MySQL, phpMyAdmin, Cloudflare Tunnel). The laptop only needs a browser and the Cloudflare link.
+- Data flow: Laptop -> Cloudflare -> Vite (5173) -> PHP (8081) -> MySQL.
+- vite.config.js: server.allowedHosts includes '.trycloudflare.com'; the /api proxy points to http://127.0.0.1:8081 and strips the /api prefix.
+ 
+  STEPS ON THE PC
+  1. XAMPP Control Panel: start MySQL only (Apache is not needed).
+  2. Terminal 1 (Vite + PHP):
+       cd C:\Users\Romce\OneDrive\Desktop\Project\project-pharma
+       npm run dev
+     Expected: Vite on port 5173, PHP on port 8081.
+     If PHP does not start on 8081, run in a separate terminal:
+       & "C:\Program Files\xampp\php\php.exe" -S 127.0.0.1:8081 -t "C:\Users\Romce\OneDrive\Desktop\Project\project-pharma\API"
+  3. Terminal 2 (Cloudflare Tunnel):
+       cd C:\Users\Romce\OneDrive\Desktop\Project\project-pharma
+       .\cloudflared.exe tunnel --url http://localhost:5173
+     If it times out or errors, add: --protocol http2
+  4. Copy the generated link (https://xxxx.trycloudflare.com) and send it to the laptop.
+  5. Admin: open http://localhost:5173 on the PC and log in.
+ 
+  STEPS ON THE LAPTOP (Pharmacist)
+  - Open the trycloudflare link in Chrome or Edge and log in. Nothing to install.
+ 
+  NOTES
+  - Do not close the tunnel terminal while someone is using the system.
+  - The link changes every time the tunnel restarts; send the new link to the laptop.
+  - Keep the PC on and set to never sleep; MySQL, npm run dev, and cloudflared must all be running.
+  - Do not expose phpMyAdmin or MySQL.
+  - The PHP server on port 8000 and Apache are not needed; keep PHP bound to 127.0.0.1.
+  - If the tunnel fails with "connection forcibly closed" or "Client.Timeout exceeded" on a hotspot network (192.168.137.x), switch to another WiFi or mobile data, or set DNS to 1.1.1.1 / 1.0.0.1 and run ipconfig /flushdns.
+  - Back up the database regularly: phpMyAdmin -> Export.
+ 

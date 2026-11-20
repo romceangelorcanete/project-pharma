@@ -369,15 +369,6 @@ export default function AdminDashboard({
             <span className="sidebar-label">Monthly Consumption</span>
           </button>
           <button
-            className={`sidebar-link ${activeSection === "regular-options" ? "active" : ""}`}
-            title="Dropdown Settings"
-            type="button"
-            onClick={() => navigateToSection("regular-options")}
-          >
-            <SidebarIcon name="options" />
-            <span className="sidebar-label">Dropdown Settings</span>
-          </button>
-          <button
             className={`sidebar-link ${activeSection === "inventory" ? "active" : ""}`}
             title="Inventory"
             type="button"
@@ -432,6 +423,15 @@ export default function AdminDashboard({
             <SidebarIcon name="reports" />
             <span className="sidebar-label">Reports</span>
             <small>Sample</small>
+          </button>
+          <button
+            className={`sidebar-link ${activeSection === "regular-options" ? "active" : ""}`}
+            title="Dropdown Settings"
+            type="button"
+            onClick={() => navigateToSection("regular-options")}
+          >
+            <SidebarIcon name="options" />
+            <span className="sidebar-label">Dropdown Settings</span>
           </button>
         </nav>
         <div className="sidebar-bottom">

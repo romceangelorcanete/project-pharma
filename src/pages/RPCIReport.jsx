@@ -23,7 +23,7 @@ export default function RPCIReport({ reportType, stockMonth, onStockMonthChange 
   const section = isDonation ? 'donation' : 'regular'
   const fallbackRows = isDonation ? sampleDonationRows : sampleRegularRows
   const [rows] = useInventoryRows(section, fallbackRows, stockMonth)
-  const [preparedBy, setPreparedBy] = useState('')
+  const [preparedBy, setPreparedBy] = useState('Juliennevi J. Bautista, RPh')
   const [preparedByPosition, setPreparedByPosition] = useState('Pharmacist I')
   const [notedBy, setNotedBy] = useState('Joelle C. Custodio, RPh')
   const [notedByPosition, setNotedByPosition] = useState('OIC - Pharmacist I')
