@@ -24,7 +24,7 @@ const pesoFormatter = new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 2,
 })
 
-export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
+export default function MonthlyConsumption({ stockMonth, onStockMonthChange, preparedBy, preparedByPosition }) {
   const [activeType, setActiveType] = useState('regular')
   const [search, setSearch] = useState('')
   const [yearPickerOpen, setYearPickerOpen] = useState(false)
@@ -87,7 +87,7 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
               </div>}
             </div>
             <label className="monthly-consumption-search"><SearchIcon /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Items" aria-label="Search Items" /></label>
-            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} />
+            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} preparedBy={preparedBy} preparedByPosition={preparedByPosition} />
           </div>
         </div>
 

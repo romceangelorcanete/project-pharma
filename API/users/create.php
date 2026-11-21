@@ -9,6 +9,7 @@ api_require_csrf();
 $body = api_json_body();
 
 $fullName = trim(is_string($body['fullName'] ?? null) ? $body['fullName'] : '');
+$positionTitle = mb_strtoupper(trim(is_string($body['positionTitle'] ?? null) ? $body['positionTitle'] : ''), 'UTF-8');
 $username = trim(is_string($body['username'] ?? null) ? $body['username'] : '');
 $password = is_string($body['password'] ?? null) ? $body['password'] : '';
 $roleName = strtolower(trim(is_string($body['role'] ?? null) ? $body['role'] : ''));
@@ -16,6 +17,9 @@ $isActive = $body['isActive'] ?? true;
 
 if ($fullName === '' || mb_strlen($fullName) > 150) {
     api_json(422, ['error' => 'Full name must be between 1 and 150 characters.']);
+}
+if (mb_strlen($positionTitle) > 100) {
+    api_json(422, ['error' => 'Position or title cannot exceed 100 characters.']);
 }
 if (!preg_match('/^[A-Za-z0-9._-]{3,80}$/', $username)) {
     api_json(422, ['error' => 'Username must be 3-80 characters using letters, numbers, dot, underscore, or hyphen.']);
@@ -42,11 +46,12 @@ try {
     }
 
     $insert = $connection->prepare(
-        'INSERT INTO users (full_name, username, password_hash, is_active)
-         VALUES (:full_name, :username, :password_hash, :is_active)'
+        'INSERT INTO users (full_name, position_title, username, password_hash, is_active)
+         VALUES (:full_name, :position_title, :username, :password_hash, :is_active)'
     );
     $insert->execute([
         'full_name' => $fullName,
+        'position_title' => $positionTitle,
         'username' => $username,
         'password_hash' => password_hash($password, PASSWORD_DEFAULT),
         'is_active' => $isActive ? 1 : 0,
@@ -72,6 +77,7 @@ api_json(201, [
     'user' => [
         'id' => $userId,
         'fullName' => $fullName,
+        'positionTitle' => $positionTitle,
         'username' => $username,
         'roles' => [$roleName],
         'role' => $roleName,

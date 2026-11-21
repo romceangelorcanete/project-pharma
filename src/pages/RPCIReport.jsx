@@ -18,13 +18,13 @@ function deliveryQuantities(item) {
   return (item.deliveries || []).map((delivery) => [delivery.qty, delivery.vendor].filter(Boolean).join(' ')).filter(Boolean).join('\n')
 }
 
-export default function RPCIReport({ reportType, stockMonth, onStockMonthChange }) {
+export default function RPCIReport({ reportType, stockMonth, onStockMonthChange, preparedBy: accountName = '', preparedByPosition: accountPosition = '' }) {
   const isDonation = reportType === 'donation'
   const section = isDonation ? 'donation' : 'regular'
   const fallbackRows = isDonation ? sampleDonationRows : sampleRegularRows
   const [rows] = useInventoryRows(section, fallbackRows, stockMonth)
-  const [preparedBy, setPreparedBy] = useState('Juliennevi J. Bautista, RPh')
-  const [preparedByPosition, setPreparedByPosition] = useState('Pharmacist I')
+  const [preparedBy, setPreparedBy] = useState(accountName)
+  const [preparedByPosition, setPreparedByPosition] = useState(accountPosition)
   const [notedBy, setNotedBy] = useState('Jeremie V. Villanueva-San Juan, RPh')
   const [notedByPosition, setNotedByPosition] = useState('PHARMACIST III')
   const [year, month] = stockMonth.split('-').map(Number)

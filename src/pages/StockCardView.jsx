@@ -36,7 +36,7 @@ function hasEntry(row) {
   return Boolean(row.reference || row.office || row.days || row.receipt !== '' && Number(row.receipt) !== 0 || row.issue !== '' && Number(row.issue) !== 0)
 }
 
-export default function StockCardView({ item, stockMonth, returnSection, onBack, backLabel = 'Back to inventory' }) {
+export default function StockCardView({ item, stockMonth, returnSection, onBack, backLabel = 'Back to inventory', preparedBy = '', preparedByPosition = '' }) {
   const [year, month] = stockMonth.split('-').map(Number)
   const draftStorageKey = `pharma-stock-card-draft:${returnSection}:${item.no}:${stockMonth}`
   const [savedCardDraft] = useState(() => {
@@ -118,7 +118,7 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
             </tbody>
           </table>
         </div>
-        <footer className="stock-card-sheet-footer"><span>{item.name}</span><span>{new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span></footer>
+        <footer className="stock-card-sheet-footer"><span>{item.name}</span><span>{new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span><span className="stock-card-prepared-by">Prepared by: <strong>{preparedBy}</strong>{preparedByPosition && <b>{preparedByPosition}</b>}</span></footer>
       </section>
     </div>
   )

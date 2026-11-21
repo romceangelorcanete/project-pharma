@@ -127,7 +127,7 @@ function api_current_user(PDO $connection): ?array
 
     try {
         $statement = $connection->prepare(
-            'SELECT u.user_id, u.full_name, u.username, u.is_active, r.role_name
+            'SELECT u.user_id, u.full_name, u.position_title, u.username, u.is_active, r.role_name
              FROM users u
              LEFT JOIN user_roles ur ON ur.user_id = u.user_id
              LEFT JOIN roles r ON r.role_id = ur.role_id
@@ -159,6 +159,7 @@ function api_current_user(PDO $connection): ?array
     return [
         'id' => (int) $rows[0]['user_id'],
         'fullName' => $rows[0]['full_name'],
+        'positionTitle' => mb_strtoupper((string) $rows[0]['position_title'], 'UTF-8'),
         'username' => $rows[0]['username'],
         'roles' => $roles,
     ];

@@ -185,6 +185,7 @@ const sampleActivity = [
 
 export default function AdminDashboard({
   user,
+  onUserUpdated,
   csrfToken,
   onLogout,
   submitting,
@@ -199,6 +200,8 @@ export default function AdminDashboard({
   const stockCardReturnUpdater = useRef(null);
   const [stockMonth, setStockMonth] = useState(getSavedStockMonth);
   const [clockNow, setClockNow] = useState(() => new Date());
+  const preparedByName = user?.fullName || user?.username || '';
+  const preparedByPosition = (user?.positionTitle || '').toLocaleUpperCase();
   const [stockYear, stockMonthNumber] = stockMonth.split("-").map(Number);
   const stockMonthLabel = new Date(
     stockYear,
@@ -694,6 +697,8 @@ export default function AdminDashboard({
           >
             <RegularInventory
               key={stockMonth}
+              preparedBy={preparedByName}
+              preparedByPosition={preparedByPosition}
               stockMonth={stockMonth}
               onStockMonthChange={setStockMonth}
               onOpenStockCard={openStockCard}
@@ -706,6 +711,8 @@ export default function AdminDashboard({
           <StockCardView
             key={`${stockCardReturnSection}-${selectedStockCard.no}-${stockMonth}`}
             item={selectedStockCard}
+            preparedBy={preparedByName}
+            preparedByPosition={preparedByPosition}
             stockMonth={stockMonth}
             returnSection={stockCardReturnSection}
             backLabel={`Back to ${stockCardReturnSection === "mhmap" ? "MHMAP" : stockCardReturnSection === "donation" ? "Donation" : "Regular"} inventory`}
@@ -728,6 +735,8 @@ export default function AdminDashboard({
           >
             <DonationInventory
               key={`${stockMonth}-donation`}
+              preparedBy={preparedByName}
+              preparedByPosition={preparedByPosition}
               stockMonth={stockMonth}
               onStockMonthChange={setStockMonth}
               monthLabel={stockMonthLabel}
@@ -747,6 +756,8 @@ export default function AdminDashboard({
           >
             <MhmapInventory
               key={`${stockMonth}-mhmap`}
+              preparedBy={preparedByName}
+              preparedByPosition={preparedByPosition}
               stockMonth={stockMonth}
               onStockMonthChange={setStockMonth}
               monthLabel={stockMonthLabel}
@@ -757,12 +768,14 @@ export default function AdminDashboard({
         )}
 
         {activeSection === "user-management" && (
-          <UserManagement csrfToken={csrfToken} />
+          <UserManagement csrfToken={csrfToken} onUserUpdated={onUserUpdated} />
         )}
 
         {activeSection === "monthly-consumption" && (
           <MonthlyConsumption
             key={stockMonth}
+            preparedBy={preparedByName}
+            preparedByPosition={preparedByPosition}
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
           />
@@ -771,6 +784,8 @@ export default function AdminDashboard({
         {activeSection === "inventory" && (
           <InventoryReport
             key={stockMonth}
+            preparedBy={preparedByName}
+            preparedByPosition={preparedByPosition}
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
           />
@@ -779,6 +794,8 @@ export default function AdminDashboard({
         {activeSection === "rpci-regular" && (
           <RPCIReport
             key={`regular-${stockMonth}`}
+            preparedBy={preparedByName}
+            preparedByPosition={preparedByPosition}
             reportType="regular"
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
@@ -788,6 +805,8 @@ export default function AdminDashboard({
         {activeSection === "rpci-donation" && (
           <RPCIReport
             key={`donation-${stockMonth}`}
+            preparedBy={preparedByName}
+            preparedByPosition={preparedByPosition}
             reportType="donation"
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}

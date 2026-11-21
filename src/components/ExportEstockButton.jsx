@@ -1,7 +1,7 @@
 import { createEstockWorkbook } from '../utils/xlsxTemplateExport.js'
 import { readInventoryRows } from '../hooks/useInventoryRows.js'
 
-export default function ExportEstockButton({ rows, regularRows, donationRows, mhmapRows, activeSheet = 'regular', stockMonth = '2026-11', consumptionYear = 2026 }) {
+export default function ExportEstockButton({ rows, regularRows, donationRows, mhmapRows, preparedBy = '', preparedByPosition = '', activeSheet = 'regular', stockMonth = '2026-11', consumptionYear = 2026 }) {
   async function downloadWorkbook() {
     try {
       const [regularModule, donationModule, mhmapModule] = await Promise.all([
@@ -18,6 +18,8 @@ export default function ExportEstockButton({ rows, regularRows, donationRows, mh
         regularRows: resolveRows(regularRows, 'regular', regularModule.sampleRegularRows),
         donationRows: resolveRows(donationRows, 'donation', donationModule.sampleDonationRows),
         mhmapRows: resolveRows(mhmapRows, 'mhmap', mhmapModule.sampleMhmapRows),
+        preparedBy,
+        preparedByPosition,
         stockMonth,
         consumptionYear,
       }

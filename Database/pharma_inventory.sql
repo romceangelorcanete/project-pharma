@@ -49,6 +49,7 @@ INSERT INTO `roles` (`role_id`, `role_name`) VALUES
 CREATE TABLE `users` (
   `user_id` int(10) UNSIGNED NOT NULL,
   `full_name` varchar(150) NOT NULL,
+  `position_title` varchar(100) NOT NULL DEFAULT '',
   `username` varchar(80) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
@@ -59,9 +60,9 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `full_name`, `username`, `password_hash`, `is_active`, `created_at`) VALUES
-(4, 'Admin Name', 'admin1', '$2y$12$J0z48wbi5O3/LdjqdAXd6Od5aP42hQaevIkgBeHal7XV0D4NyIpH6', 1, '2026-11-12 14:35:10'),
-(6, 'Pharmacist Name', 'pharmacist1', '$2y$12$IXPQZtx/8EkARbNj/48sauRytg/lGq7yvnSJZ6DbDanBogjzhGZwa', 1, '2026-11-12 14:48:38');
+INSERT INTO `users` (`user_id`, `full_name`, `position_title`, `username`, `password_hash`, `is_active`, `created_at`) VALUES
+(4, 'Admin Name', '', 'admin1', '$2y$12$J0z48wbi5O3/LdjqdAXd6Od5aP42hQaevIkgBeHal7XV0D4NyIpH6', 1, '2026-11-12 14:35:10'),
+(6, 'Pharmacist Name', '', 'pharmacist1', '$2y$12$IXPQZtx/8EkARbNj/48sauRytg/lGq7yvnSJZ6DbDanBogjzhGZwa', 1, '2026-11-12 14:48:38');
 
 -- --------------------------------------------------------
 

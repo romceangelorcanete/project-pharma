@@ -10,6 +10,7 @@ $body = api_json_body();
 
 $userId = filter_var($body['id'] ?? null, FILTER_VALIDATE_INT);
 $fullName = trim(is_string($body['fullName'] ?? null) ? $body['fullName'] : '');
+$positionTitle = mb_strtoupper(trim(is_string($body['positionTitle'] ?? null) ? $body['positionTitle'] : ''), 'UTF-8');
 $username = trim(is_string($body['username'] ?? null) ? $body['username'] : '');
 $password = is_string($body['password'] ?? null) ? $body['password'] : '';
 $roleName = strtolower(trim(is_string($body['role'] ?? null) ? $body['role'] : ''));
@@ -20,6 +21,9 @@ if ($userId === false || $userId < 1) {
 }
 if ($fullName === '' || mb_strlen($fullName) > 150) {
     api_json(422, ['error' => 'Full name must be between 1 and 150 characters.']);
+}
+if (mb_strlen($positionTitle) > 100) {
+    api_json(422, ['error' => 'Position or title cannot exceed 100 characters.']);
 }
 if (!preg_match('/^[A-Za-z0-9._-]{3,80}$/', $username)) {
     api_json(422, ['error' => 'Username must be 3-80 characters using letters, numbers, dot, underscore, or hyphen.']);
@@ -78,11 +82,12 @@ try {
 
     $update = $connection->prepare(
         'UPDATE users
-         SET full_name = :full_name, username = :username, is_active = :is_active
+         SET full_name = :full_name, position_title = :position_title, username = :username, is_active = :is_active
          WHERE user_id = :user_id'
     );
     $update->execute([
         'full_name' => $fullName,
+        'position_title' => $positionTitle,
         'username' => $username,
         'is_active' => $isActive ? 1 : 0,
         'user_id' => $userId,
@@ -116,6 +121,7 @@ api_json(200, [
     'user' => [
         'id' => (int) $userId,
         'fullName' => $fullName,
+        'positionTitle' => $positionTitle,
         'username' => $username,
         'roles' => [$roleName],
         'role' => $roleName,

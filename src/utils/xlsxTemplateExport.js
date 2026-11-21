@@ -1,5 +1,6 @@
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 const encoder = new TextEncoder()
+let templateEntriesPromise
 
 function crc32(bytes) {
   let crc = 0xffffffff
@@ -58,6 +59,22 @@ function readZipEntries(buffer) {
   return entries
 }
 
+async function getTemplateEntries() {
+  if (!templateEntriesPromise) {
+    templateEntriesPromise = fetch('/templates/E-STOCK%20NOVEMBER%202026.xlsx')
+      .then((response) => {
+        if (!response.ok) throw new Error('Hindi ma-load ang E-STOCK NOVEMBER 2026.xlsx template.')
+        return response.arrayBuffer()
+      })
+      .then(readZipEntries)
+      .catch((error) => {
+        templateEntriesPromise = undefined
+        throw error
+      })
+  }
+  return (await templateEntriesPromise).map((entry) => ({ ...entry }))
+}
+
 async function transformBytes(bytes, format, Constructor) {
   if (typeof Constructor !== 'function') throw new Error('This browser does not support Excel workbook editing.')
   const stream = new Blob([bytes]).stream().pipeThrough(new Constructor(format))
@@ -104,20 +121,6 @@ function setCell(xml, reference, value) {
   return xml.replace(rowPattern, row[0].replace('</row>', `${cell}</row>`))
 }
 
-function replaceCellValue(xml, reference, value) {
-  const escapedReference = reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const cellPattern = new RegExp(`<c\\b(?=[^>]*\\br="${escapedReference}")[^>]*?(?:\\/>|>[\\s\\S]*?<\\/c>)`)
-  const existing = xml.match(cellPattern)
-  if (existing) {
-    const style = existing[0].match(/\bs="(\d+)"/)?.[1]
-    return xml.replace(cellPattern, cellXml(reference, value, style))
-  }
-  const rowNumber = Number(reference.match(/\d+$/)?.[0])
-  const rowPattern = new RegExp(`<row\\b(?=[^>]*\\br="${rowNumber}")[^>]*>[\\s\\S]*?<\\/row>`)
-  const row = xml.match(rowPattern)
-  return row ? xml.replace(rowPattern, row[0].replace('</row>', `${cellXml(reference, value)}</row>`)) : xml
-}
-
 function applyCellUpdates(xml, updates, replaceFormulas = false) {
   const pending = new Map(updates)
   xml = xml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, (existing) => {
@@ -131,24 +134,45 @@ function applyCellUpdates(xml, updates, replaceFormulas = false) {
     return cellXml(reference, value, style)
   })
 
-  // Most workbook cells already exist. Fall back to the single-cell writer
-  // only for the small number of mapped cells missing from the template.
+  const missingByRow = new Map()
   for (const [reference, value] of pending) {
     if (value === null || value === undefined) continue
-    xml = replaceFormulas ? replaceCellValue(xml, reference, value) : setCell(xml, reference, value)
+    const rowNumber = Number(reference.match(/\d+$/)?.[0])
+    if (!missingByRow.has(rowNumber)) missingByRow.set(rowNumber, [])
+    missingByRow.get(rowNumber).push([reference, value])
+  }
+  if (missingByRow.size) {
+    xml = xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g, (rowXml) => {
+      const rowNumber = Number(rowXml.match(/\br="(\d+)"/)?.[1])
+      const cells = missingByRow.get(rowNumber)
+      if (!cells) return rowXml
+      cells.sort(([left], [right]) => left.localeCompare(right, undefined, { numeric: true }))
+      return rowXml.replace('</row>', `${cells.map(([reference, value]) => cellXml(reference, value)).join('')}</row>`)
+    })
   }
   return xml
 }
 
 function clearReferenceErrors(xml) {
-  return xml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, (cell) => {
-    if (!/#REF!/.test(cell)) return cell
+  const cellPattern = /<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g
+  const brokenSharedGroups = new Set()
+  for (const match of xml.matchAll(cellPattern)) {
+    const cell = match[0]
+    if (!/#REF!/.test(cell)) continue
+    const formula = cell.match(/<f\b[^>]*>([\s\S]*?)<\/f>/)?.[1]
+    // A cached error is safe when the underlying formula itself is valid.
+    if (formula && !formula.includes('#REF!')) continue
+    const sharedIndex = cell.match(/<f\b[^>]*\bt="shared"[^>]*\bsi="(\d+)"/)?.[1]
+    if (sharedIndex) brokenSharedGroups.add(sharedIndex)
+  }
+
+  return xml.replace(cellPattern, (cell) => {
+    const formulaTag = cell.match(/<f\b[^>]*>[\s\S]*?<\/f>|<f\b[^>]*\/>/)?.[0] || ''
+    const sharedIndex = formulaTag.match(/\bt="shared"[^>]*\bsi="(\d+)"/)?.[1]
+    const brokenFormula = /#REF!/.test(cell) && (!cell.match(/<f\b[^>]*>([\s\S]*?)<\/f>/)?.[1] || cell.match(/<f\b[^>]*>([\s\S]*?)<\/f>/)[1].includes('#REF!'))
+    if (!brokenFormula && (!sharedIndex || !brokenSharedGroups.has(sharedIndex))) return cell
     const reference = cell.match(/\br="([A-Z]+\d+)"/)?.[1]
     if (!reference) return cell
-    const formula = cell.match(/<f\b[^>]*>([\s\S]*?)<\/f>/)?.[1]
-    // Remove only a cell whose formula itself is broken. Preserve formulas
-    // that merely have an error cached from another calculation.
-    if (formula && !formula.includes('#REF!')) return cell
     const style = cell.match(/\bs="(\d+)"/)?.[1]
     return `<c r="${reference}"${style ? ` s="${style}"` : ''}/>`
   })
@@ -178,6 +202,133 @@ function inventoryReportCellValues(item, rowNumber) {
   }
   for (let index = 0; index < 5; index += 1) values[excelColumn(index + 10)] = Number(item.weekly?.[index]) || 0
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
+}
+
+const inventoryHelperColumns = ['BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI']
+
+function deliveryQuantityTotal(deliveries = []) {
+  return deliveries.reduce((total, delivery) => {
+    const quantity = Number(String(delivery.qty ?? '').replace(/,/g, '').match(/^-?\d+(?:\.\d+)?/)?.[0])
+    return total + (Number.isFinite(quantity) ? quantity : 0)
+  }, 0)
+}
+
+function inventoryHelperCellValues(item, rowNumber) {
+  const values = [
+    Number(item.beginning) || 0,
+    Number(item.ending ?? item.beginning) || 0,
+    Number(item.monthly) || 0,
+    ...Array.from({ length: 5 }, (_, index) => Number(item.weekly?.[index]) || 0),
+    deliveryQuantityTotal(item.deliveries),
+  ]
+  return inventoryHelperColumns.map((column, index) => [`${column}${rowNumber}`, values[index]])
+}
+
+function hideInventoryHelperColumns(xml) {
+  const hiddenColumns = '<col min="53" max="61" width="0" hidden="1" customWidth="1"/>'
+  if (/<cols\b[^>]*>[\s\S]*?<\/cols>/.test(xml)) {
+    xml = xml.replace(/<cols\b[^>]*>[\s\S]*?<\/cols>/, (columns) => `${columns.replace('</cols>', '')}${hiddenColumns}</cols>`)
+  } else {
+    xml = xml.replace('<sheetData>', `<cols>${hiddenColumns}</cols><sheetData>`)
+  }
+  return xml.replace(/(<dimension\b[^>]*\bref="[A-Z]+\d+:)[A-Z]+(\d+"[^>]*\/>)/, '$1BI$2')
+}
+
+function syncRegularEndingBalanceFormula(xml, rows) {
+  const sharedRanges = []
+  const cellPattern = /<c\b[^>]*\br="AR\d+"[^>]*>[\s\S]*?<f\b[^>]*>[\s\S]*?<\/f>[\s\S]*?<\/c>/g
+  for (const match of xml.matchAll(cellPattern)) {
+    const formulaTag = match[0].match(/<f\b([^>]*)>/)
+    if (!formulaTag || !/\bt="shared"/.test(formulaTag[1])) continue
+    const range = formulaTag[1].match(/\bref="AR(\d+):AR(\d+)"/)
+    if (range) sharedRanges.push([Number(range[1]), Number(range[2])])
+  }
+
+  const updates = new Map()
+  sharedRanges.forEach(([startRow, endRow]) => {
+    for (let rowNumber = startRow; rowNumber <= endRow; rowNumber += 1) {
+      const item = rows[rowNumber - 3]
+      updates.set(`AR${rowNumber}`, {
+        formula: `J${rowNumber}+BI${rowNumber}-AS${rowNumber}`,
+        value: Number(item?.ending ?? item?.beginning) || 0,
+      })
+    }
+  })
+  rows.forEach((item, index) => {
+    const rowNumber = index + 3
+    updates.set(`AR${rowNumber}`, {
+      formula: `J${rowNumber}+BI${rowNumber}-AS${rowNumber}`,
+      value: Number(item.ending ?? item.beginning) || 0,
+    })
+  })
+  xml = applyFormulaUpdates(xml, updates)
+  const formulaCaches = new Map()
+  rows.forEach((item, index) => {
+    const rowNumber = index + 3
+    formulaCaches.set(`AS${rowNumber}`, Number(item.monthly) || 0)
+    for (let week = 0; week < 5; week += 1) {
+      formulaCaches.set(`${excelColumn(46 + week)}${rowNumber}`, Number(item.weekly?.[week]) || 0)
+    }
+  })
+  return applyFormulaCaches(xml, formulaCaches)
+}
+
+function applyFormulaUpdates(xml, updates) {
+  const pending = new Map(updates)
+  const cellPattern = /<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g
+  xml = xml.replace(cellPattern, (existing) => {
+    const reference = existing.match(/\br="([A-Z]+\d+)"/)?.[1]
+    if (!reference || !pending.has(reference)) return existing
+    const { formula, value } = pending.get(reference)
+    pending.delete(reference)
+    const style = existing.match(/\bs="(\d+)"/)?.[1]
+    return `<c r="${reference}"${style ? ` s="${style}"` : ''}><f>${xmlEscape(formula)}</f><v>${xmlEscape(value)}</v></c>`
+  })
+  return xml
+}
+
+function applyFormulaCaches(xml, updates) {
+  const pending = new Map(updates)
+  const cellPattern = /<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g
+  return xml.replace(cellPattern, (existing) => {
+    const reference = existing.match(/\br="([A-Z]+\d+)"/)?.[1]
+    if (!reference || !pending.has(reference) || !/<f(?:\s|\/|>)/.test(existing)) return existing
+    const value = xmlEscape(pending.get(reference))
+    if (/<v>[\s\S]*?<\/v>/.test(existing)) return existing.replace(/<v>[\s\S]*?<\/v>/, `<v>${value}</v>`)
+    return existing.replace('</c>', `<v>${value}</v></c>`)
+  })
+}
+
+function syncInventoryReportFormulas(xml, groups) {
+  const sourceMappings = [
+    { sheet: 'REGULAR', beginning: 'J', ending: 'BB', monthly: 'BC', weeklyStart: 56 },
+    { sheet: 'DONATION', beginning: 'E', ending: 'BB', monthly: 'BC', weeklyStart: 56 },
+    { sheet: 'MHMAP', beginning: 'E', ending: 'BB', monthly: 'BC', weeklyStart: 56 },
+  ]
+
+  const updates = new Map()
+  groups.forEach((group, groupIndex) => {
+    const source = sourceMappings[groupIndex]
+    for (let reportRow = group.startRow; reportRow <= group.endRow; reportRow += 1) {
+      const sourceRow = reportRow - group.startRow + 3
+      const item = group.rows[sourceRow - 3]
+      const ending = Number(item?.ending ?? item?.beginning) || 0
+      const monthly = Number(item?.monthly) || 0
+      const weekly = Array.from({ length: 5 }, (_, week) => Number(item?.weekly?.[week]) || 0)
+      const reportCells = [
+        ['G', `${source.sheet}!${source.beginning}${sourceRow}`, Number(item?.beginning) || 0],
+        ['H', `${source.sheet}!${source.ending}${sourceRow}`, ending],
+        ['I', `SUM(J${reportRow}:N${reportRow})`, monthly],
+      ]
+      for (let week = 0; week < 5; week += 1) {
+        reportCells.push([excelColumn(10 + week), `${source.sheet}!${excelColumn(source.weeklyStart + week)}${sourceRow}`, weekly[week]])
+      }
+      reportCells.forEach(([column, formula, value]) => {
+        updates.set(`${column}${reportRow}`, { formula, value })
+      })
+    }
+  })
+  return applyFormulaUpdates(xml, updates)
 }
 
 function hideUnusedReportRows(xml, startRow, endRow, visibleRows) {
@@ -287,16 +438,10 @@ function regularCellValues(item, rowNumber) {
     J: item.beginning,
     K: deliveryDates(item.deliveries),
     L: deliveryQuantities(item.deliveries, '\n'),
-    AS: item.ending,
-    AT: item.monthly,
   }
   for (let day = 1; day <= 31; day += 1) {
-    const columnIndex = day <= 3 ? day + 12 : day + 13
-    values[excelColumn(columnIndex)] = item.daily?.[day] ?? ''
+    values[excelColumn(day + 12)] = item.daily?.[day] ?? ''
   }
-  ;(item.weekly || []).slice(0, 5).forEach((qty, index) => {
-    values[excelColumn(47 + index)] = qty
-  })
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
 }
 
@@ -333,21 +478,20 @@ function monthlyCellValues(item, rowNumber, stockMonth, averageMonths = 12, cons
 }
 
 async function writeZip(entries) {
-  const files = []
-  for (const entry of entries) {
+  const files = await Promise.all(entries.map(async (entry) => {
     const nameBytes = encoder.encode(entry.name)
     const compressedData = entry.updatedText === undefined
       ? entry.compressedData
       : await transformBytes(encoder.encode(entry.updatedText), 'deflate-raw', CompressionStream)
     const uncompressedData = entry.updatedText === undefined ? null : encoder.encode(entry.updatedText)
-    files.push({
+    return {
       nameBytes,
       compressedData,
       crc: uncompressedData ? crc32(uncompressedData) : entry.crc,
       uncompressedSize: uncompressedData?.length ?? entry.uncompressedSize,
       method: entry.updatedText === undefined ? entry.method : 8,
-    })
-  }
+    }
+  }))
 
   const chunks = []
   let offset = 0
@@ -398,11 +542,8 @@ async function writeZip(entries) {
   return new Blob(chunks, { type: XLSX_MIME })
 }
 
-export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], stockMonth = '2026-11', consumptionYear = 2026 } = {}) {
-  const response = await fetch('/templates/E-STOCK%20NOVEMBER%202026.xlsx')
-  if (!response.ok) throw new Error('Hindi ma-load ang E-STOCK NOVEMBER 2026.xlsx template.')
-
-  const entries = readZipEntries(await response.arrayBuffer())
+export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], preparedBy = '', preparedByPosition = '', stockMonth = '2026-11', consumptionYear = 2026 } = {}) {
+  const entries = await getTemplateEntries()
   const calcChainIndex = entries.findIndex((candidate) => candidate.name === 'xl/calcChain.xml')
   if (calcChainIndex >= 0) entries.splice(calcChainIndex, 1)
 
@@ -429,23 +570,27 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     workbookEntry.updatedText = workbookXml
   }
   const sheets = [
-    { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1', dataStartRow: 3 },
-    { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
-    { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
+    { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1', dataStartRow: 3, inventoryHelperRows: regularRows, regularEndingRows: regularRows },
+    { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3, inventoryHelperRows: donationRows },
+    { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3, inventoryHelperRows: mhmapRows },
     {
       file: 'xl/worksheets/sheet5.xml',
       reportGroups: inventoryReportGroups(regularRows, donationRows, mhmapRows),
       clearReferenceErrors: true,
       reportTitleCell: 'A1',
+      preparedByCell: 'B597',
+      preparedByPositionCell: 'B598',
       sectionTitles: [{ cell: 'A476', value: 'DONATION' }],
     },
-    { file: 'xl/worksheets/sheet6.xml', rpciGroups: [{ startRow: 15, endRow: 486, rows: regularRows }] },
+    { file: 'xl/worksheets/sheet6.xml', rpciGroups: [{ startRow: 15, endRow: 486, rows: regularRows }], preparedByCell: 'C491', preparedByPositionCell: 'C492' },
     {
       file: 'xl/worksheets/sheet7.xml',
       rpciGroups: [
         { startRow: 15, endRow: 107, rows: donationRows },
         { startRow: 112, endRow: 131, rows: mhmapRows },
       ],
+      preparedByCell: 'C134',
+      preparedByPositionCell: 'C135',
     },
     {
       file: 'xl/worksheets/sheet4.xml',
@@ -465,6 +610,7 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     let xml = new TextDecoder().decode(bytes)
     if (sheet.dataStartRow) {
       xml = prepareDataRows(xml, sheet.dataStartRow, lastWorksheetRow(xml), sheet.rows.length)
+      xml = adjustInventoryReportRowHeights(xml, { rows: sheet.rows, startRow: sheet.dataStartRow })
     }
     if (sheet.groups) {
       sheet.groups.forEach((group) => {
@@ -505,6 +651,8 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     sheet.sectionTitles?.forEach(({ cell, value }) => {
       xml = setCell(xml, cell, value)
     })
+    if (sheet.preparedByCell) xml = setCell(xml, sheet.preparedByCell, preparedBy)
+    if (sheet.preparedByPositionCell) xml = setCell(xml, sheet.preparedByPositionCell, preparedByPosition)
     const groups = sheet.groups || (sheet.rows ? [{ rows: sheet.rows, startRow: sheet.startRow || 3 }] : [])
     const cellUpdates = new Map()
     groups.forEach((group) => {
@@ -523,7 +671,18 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       })
     })
     xml = applyCellUpdates(xml, cellUpdates)
+    if (sheet.inventoryHelperRows) {
+      const helperUpdates = new Map()
+      sheet.inventoryHelperRows.forEach((item, index) => {
+        inventoryHelperCellValues(item, index + 3).forEach(([reference, value]) => helperUpdates.set(reference, value))
+      })
+      xml = applyCellUpdates(xml, helperUpdates)
+      xml = hideInventoryHelperColumns(xml)
+    }
+    if (sheet.regularEndingRows) xml = syncRegularEndingBalanceFormula(xml, sheet.regularEndingRows)
+    if (sheet.reportGroups) xml = syncInventoryReportFormulas(xml, sheet.reportGroups)
     entry.updatedText = xml
   }
+
   return writeZip(entries)
 }

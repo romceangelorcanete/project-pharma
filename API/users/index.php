@@ -9,7 +9,7 @@ api_require_roles(['admin']);
 $connection = api_db();
 try {
     $statement = $connection->query(
-        'SELECT u.user_id, u.full_name, u.username, u.is_active, u.created_at, r.role_name
+        'SELECT u.user_id, u.full_name, u.position_title, u.username, u.is_active, u.created_at, r.role_name
          FROM users u
          LEFT JOIN user_roles ur ON ur.user_id = u.user_id
          LEFT JOIN roles r ON r.role_id = ur.role_id
@@ -28,6 +28,7 @@ foreach ($rows as $row) {
         $users[$id] = [
             'id' => $id,
             'fullName' => $row['full_name'],
+            'positionTitle' => mb_strtoupper((string) $row['position_title'], 'UTF-8'),
             'username' => $row['username'],
             'roles' => [],
             'isActive' => (int) $row['is_active'] === 1,

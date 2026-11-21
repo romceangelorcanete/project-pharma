@@ -106,6 +106,22 @@ export default function App() {
     }
   }
 
+  function handleUserUpdated(updatedUser) {
+    if (!updatedUser) return
+    setAuth((current) => {
+      if (!current.user || String(current.user.id) !== String(updatedUser.id)) return current
+      return {
+        ...current,
+        user: {
+          ...current.user,
+          fullName: updatedUser.fullName,
+          positionTitle: updatedUser.positionTitle || '',
+          username: updatedUser.username,
+        },
+      }
+    })
+  }
+
   if (auth.status === "loading") {
     return (
       <main className="page-shell">
@@ -124,6 +140,7 @@ export default function App() {
       return (
         <AdminDashboard
           user={auth.user}
+          onUserUpdated={handleUserUpdated}
           csrfToken={auth.csrfToken}
           onLogout={handleLogout}
           submitting={submitting}
