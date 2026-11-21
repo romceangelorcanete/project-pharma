@@ -127,7 +127,9 @@ function getSavedStockCard() {
   try {
     const saved = window.sessionStorage.getItem("pharma-selected-stock-card");
     const item = saved ? JSON.parse(saved) : null;
-    return item && typeof item === "object" && item.name ? item : sampleRegularRows[0];
+    return item && typeof item === "object" && item.name
+      ? item
+      : sampleRegularRows[0];
   } catch {
     return sampleRegularRows[0];
   }
@@ -135,7 +137,9 @@ function getSavedStockCard() {
 
 function getSavedStockCardReturnSection() {
   try {
-    const saved = window.sessionStorage.getItem("pharma-stock-card-return-section");
+    const saved = window.sessionStorage.getItem(
+      "pharma-stock-card-return-section",
+    );
     return ["regular", "donation", "mhmap"].includes(saved) ? saved : "regular";
   } catch {
     return "regular";
@@ -172,7 +176,7 @@ const sampleActivity = [
   },
   {
     action: "Stock issued",
-    item: "Omeprazole 20 mg",
+    item: "Omeprazole 40 mg",
     detail: "Issued 6 boxes",
     time: "Yesterday, 4:30 PM",
     mark: "−",
@@ -189,7 +193,9 @@ export default function AdminDashboard({
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection);
   const [selectedStockCard, setSelectedStockCard] = useState(getSavedStockCard);
-  const [stockCardReturnSection, setStockCardReturnSection] = useState(getSavedStockCardReturnSection);
+  const [stockCardReturnSection, setStockCardReturnSection] = useState(
+    getSavedStockCardReturnSection,
+  );
   const stockCardReturnUpdater = useRef(null);
   const [stockMonth, setStockMonth] = useState(getSavedStockMonth);
   const [clockNow, setClockNow] = useState(() => new Date());
@@ -207,7 +213,12 @@ export default function AdminDashboard({
     if (window.innerWidth <= 760) setSidebarOpen(false);
   }
 
-  function openStockCard(item = sampleRegularRows[0], month = stockMonth, returnSection = "regular", updateDraft = null) {
+  function openStockCard(
+    item = sampleRegularRows[0],
+    month = stockMonth,
+    returnSection = "regular",
+    updateDraft = null,
+  ) {
     setSelectedStockCard(item || sampleRegularRows[0]);
     setStockCardReturnSection(returnSection);
     stockCardReturnUpdater.current = updateDraft;
@@ -253,8 +264,14 @@ export default function AdminDashboard({
 
   useEffect(() => {
     try {
-      window.sessionStorage.setItem("pharma-selected-stock-card", JSON.stringify(selectedStockCard));
-      window.sessionStorage.setItem("pharma-stock-card-return-section", stockCardReturnSection);
+      window.sessionStorage.setItem(
+        "pharma-selected-stock-card",
+        JSON.stringify(selectedStockCard),
+      );
+      window.sessionStorage.setItem(
+        "pharma-stock-card-return-section",
+        stockCardReturnSection,
+      );
       window.sessionStorage.setItem("pharma-stock-month", stockMonth);
     } catch {
       // Keep the stock-card view usable when browser storage is unavailable.
@@ -299,7 +316,11 @@ export default function AdminDashboard({
             href="/"
             aria-label="JVGH Pharmacy home"
           >
-            <img className="dashboard-brand-logo" src="/jvgh-pharmacy-icon.jpg" alt="" />
+            <img
+              className="dashboard-brand-logo"
+              src="/jvgh-pharmacy-icon.jpg"
+              alt=""
+            />
             <span>
               JVGH <strong>PHARMACY</strong>
             </span>
@@ -663,45 +684,75 @@ export default function AdminDashboard({
           </>
         )}
 
-        {(activeSection === "regular" || (activeSection === "stock-cards" && stockCardReturnSection === "regular")) && (
-          <div style={activeSection === "stock-cards" ? { display: "none" } : undefined}>
-          <RegularInventory
-            key={stockMonth}
-            stockMonth={stockMonth}
-            onStockMonthChange={setStockMonth}
-            onOpenStockCard={openStockCard}
-            stockCardReturnUpdater={stockCardReturnUpdater}
-          />
+        {(activeSection === "regular" ||
+          (activeSection === "stock-cards" &&
+            stockCardReturnSection === "regular")) && (
+          <div
+            style={
+              activeSection === "stock-cards" ? { display: "none" } : undefined
+            }
+          >
+            <RegularInventory
+              key={stockMonth}
+              stockMonth={stockMonth}
+              onStockMonthChange={setStockMonth}
+              onOpenStockCard={openStockCard}
+              stockCardReturnUpdater={stockCardReturnUpdater}
+            />
           </div>
         )}
 
-        {activeSection === "stock-cards" && <StockCardView key={`${stockCardReturnSection}-${selectedStockCard.no}-${stockMonth}`} item={selectedStockCard} stockMonth={stockMonth} returnSection={stockCardReturnSection} backLabel={`Back to ${stockCardReturnSection === "mhmap" ? "MHMAP" : stockCardReturnSection === "donation" ? "Donation" : "Regular"} inventory`} onBack={(updatedItem) => { stockCardReturnUpdater.current?.(updatedItem); navigateToSection(stockCardReturnSection) }} />}
+        {activeSection === "stock-cards" && (
+          <StockCardView
+            key={`${stockCardReturnSection}-${selectedStockCard.no}-${stockMonth}`}
+            item={selectedStockCard}
+            stockMonth={stockMonth}
+            returnSection={stockCardReturnSection}
+            backLabel={`Back to ${stockCardReturnSection === "mhmap" ? "MHMAP" : stockCardReturnSection === "donation" ? "Donation" : "Regular"} inventory`}
+            onBack={(updatedItem) => {
+              stockCardReturnUpdater.current?.(updatedItem);
+              navigateToSection(stockCardReturnSection);
+            }}
+          />
+        )}
 
         {activeSection === "regular-options" && <RegularDropdownOptions />}
 
-        {(activeSection === "donation" || (activeSection === "stock-cards" && stockCardReturnSection === "donation")) && (
-          <div style={activeSection === "stock-cards" ? { display: "none" } : undefined}>
-          <DonationInventory
-            key={`${stockMonth}-donation`}
-            stockMonth={stockMonth}
-            onStockMonthChange={setStockMonth}
-            monthLabel={stockMonthLabel}
-            onOpenStockCard={openStockCard}
-            stockCardReturnUpdater={stockCardReturnUpdater}
-          />
+        {(activeSection === "donation" ||
+          (activeSection === "stock-cards" &&
+            stockCardReturnSection === "donation")) && (
+          <div
+            style={
+              activeSection === "stock-cards" ? { display: "none" } : undefined
+            }
+          >
+            <DonationInventory
+              key={`${stockMonth}-donation`}
+              stockMonth={stockMonth}
+              onStockMonthChange={setStockMonth}
+              monthLabel={stockMonthLabel}
+              onOpenStockCard={openStockCard}
+              stockCardReturnUpdater={stockCardReturnUpdater}
+            />
           </div>
         )}
 
-        {(activeSection === "mhmap" || (activeSection === "stock-cards" && stockCardReturnSection === "mhmap")) && (
-          <div style={activeSection === "stock-cards" ? { display: "none" } : undefined}>
-          <MhmapInventory
-            key={`${stockMonth}-mhmap`}
-            stockMonth={stockMonth}
-            onStockMonthChange={setStockMonth}
-            monthLabel={stockMonthLabel}
-            onOpenStockCard={openStockCard}
-            stockCardReturnUpdater={stockCardReturnUpdater}
-          />
+        {(activeSection === "mhmap" ||
+          (activeSection === "stock-cards" &&
+            stockCardReturnSection === "mhmap")) && (
+          <div
+            style={
+              activeSection === "stock-cards" ? { display: "none" } : undefined
+            }
+          >
+            <MhmapInventory
+              key={`${stockMonth}-mhmap`}
+              stockMonth={stockMonth}
+              onStockMonthChange={setStockMonth}
+              monthLabel={stockMonthLabel}
+              onOpenStockCard={openStockCard}
+              stockCardReturnUpdater={stockCardReturnUpdater}
+            />
           </div>
         )}
 
@@ -710,21 +761,38 @@ export default function AdminDashboard({
         )}
 
         {activeSection === "monthly-consumption" && (
-          <MonthlyConsumption key={stockMonth} stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+          <MonthlyConsumption
+            key={stockMonth}
+            stockMonth={stockMonth}
+            onStockMonthChange={setStockMonth}
+          />
         )}
 
         {activeSection === "inventory" && (
-          <InventoryReport key={stockMonth} stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+          <InventoryReport
+            key={stockMonth}
+            stockMonth={stockMonth}
+            onStockMonthChange={setStockMonth}
+          />
         )}
 
         {activeSection === "rpci-regular" && (
-          <RPCIReport key={`regular-${stockMonth}`} reportType="regular" stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+          <RPCIReport
+            key={`regular-${stockMonth}`}
+            reportType="regular"
+            stockMonth={stockMonth}
+            onStockMonthChange={setStockMonth}
+          />
         )}
 
         {activeSection === "rpci-donation" && (
-          <RPCIReport key={`donation-${stockMonth}`} reportType="donation" stockMonth={stockMonth} onStockMonthChange={setStockMonth} />
+          <RPCIReport
+            key={`donation-${stockMonth}`}
+            reportType="donation"
+            stockMonth={stockMonth}
+            onStockMonthChange={setStockMonth}
+          />
         )}
-
       </section>
     </main>
   );
