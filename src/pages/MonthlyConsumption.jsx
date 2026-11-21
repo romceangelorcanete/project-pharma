@@ -17,6 +17,13 @@ function numericPrice(value) {
   return Number(String(value ?? '').replace(/[^\d.-]/g, '')) || 0
 }
 
+const pesoFormatter = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
 export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
   const [activeType, setActiveType] = useState('regular')
   const [search, setSearch] = useState('')
@@ -80,7 +87,7 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
               </div>}
             </div>
             <label className="monthly-consumption-search"><SearchIcon /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Items" aria-label="Search Items" /></label>
-            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} />
+            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} />
           </div>
         </div>
 
@@ -92,7 +99,8 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange }) {
               const dpri = numericPrice(item.dpri)
               const monthlyValues = monthNames.map((_, index) => index === monthNumber - 1 ? consumption : 0)
               const totalConsumption = monthlyValues.reduce((total, value) => total + value, 0)
-              return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{value || ''}</td>)}<td>{dpri ? dpri.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}</td><td>{(totalConsumption * dpri).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td><td>{totalConsumption}</td><td>{(totalConsumption / section.averageMonths).toFixed(2)}</td></tr>
+              const averageConsumption = Math.round(totalConsumption / section.averageMonths)
+              return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{value || ''}</td>)}<td>{dpri ? pesoFormatter.format(dpri) : ''}</td><td>{pesoFormatter.format(totalConsumption * dpri)}</td><td>{totalConsumption}</td><td>{averageConsumption}</td></tr>
             })}</tbody>
           </table>
           {visibleRows.length === 0 && <p className="monthly-consumption-empty">No items match your search.</p>}

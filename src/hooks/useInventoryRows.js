@@ -53,8 +53,12 @@ function rowsForPeriod(section, fallbackRows, period) {
   return rows
 }
 
+export function readInventoryRows(section, fallbackRows, period = basePeriod) {
+  return rowsForPeriod(section, fallbackRows, period)
+}
+
 export default function useInventoryRows(section, fallbackRows, period = basePeriod) {
-  const [rows, setRowsState] = useState(() => rowsForPeriod(section, fallbackRows, period))
+  const [rows, setRowsState] = useState(() => readInventoryRows(section, fallbackRows, period))
   const dirtyRef = useRef(false)
 
   useEffect(() => {

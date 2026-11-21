@@ -68,6 +68,17 @@ function xmlEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[character])
 }
 
+function deliveryDates(deliveries = []) {
+  return deliveries.map((delivery) => delivery.date || '').filter(Boolean).join('\n')
+}
+
+function deliveryQuantities(deliveries = [], separator = ' ') {
+  return deliveries
+    .map((delivery) => [delivery.qty, delivery.vendor].filter((part) => part !== '' && part != null).join(separator))
+    .filter(Boolean)
+    .join('\n')
+}
+
 function cellXml(reference, value, style) {
   const styleAttribute = style ? ` s="${style}"` : ''
   if (typeof value === 'number' && Number.isFinite(value)) return `<c r="${reference}"${styleAttribute}><v>${value}</v></c>`
@@ -129,35 +140,88 @@ function applyCellUpdates(xml, updates, replaceFormulas = false) {
   return xml
 }
 
-function clearEmptyReportFields(xml, groups) {
-  const updates = new Map()
-  for (const group of groups) {
-    for (let row = group.startRow; row <= group.endRow; row += 1) {
-      const item = group.rows[row - group.startRow]
-      for (const [column, getValue] of Object.entries(group.fields)) {
-        if (String(getValue(item) ?? '').trim()) continue
-        updates.set(`${column}${row}`, '')
-      }
-    }
-  }
-  return applyCellUpdates(xml, updates, true)
-}
-
 function clearReferenceErrors(xml) {
   return xml.replace(/<c\b[^>]*\/>|<c\b[^>]*>[\s\S]*?<\/c>/g, (cell) => {
     if (!/#REF!/.test(cell)) return cell
     const reference = cell.match(/\br="([A-Z]+\d+)"/)?.[1]
     if (!reference) return cell
+    const formula = cell.match(/<f\b[^>]*>([\s\S]*?)<\/f>/)?.[1]
+    // Remove only a cell whose formula itself is broken. Preserve formulas
+    // that merely have an error cached from another calculation.
+    if (formula && !formula.includes('#REF!')) return cell
     const style = cell.match(/\bs="(\d+)"/)?.[1]
     return `<c r="${reference}"${style ? ` s="${style}"` : ''}/>`
   })
 }
 
 const inventoryReportGroups = (regularRows, donationRows, mhmapRows) => [
-  { startRow: 4, endRow: 475, rows: regularRows, fields: { B: (item) => item?.name, C: (item) => item?.expiry, D: (item) => item?.lot, E: (item) => item?.deliveries?.map((delivery) => delivery.date).filter(Boolean).join('\n') } },
-  { startRow: 478, endRow: 571, rows: donationRows, fields: { B: (item) => item?.name, C: (item) => item?.expiry, D: (item) => item?.lot, E: (item) => item?.deliveries?.map((delivery) => delivery.date).filter(Boolean).join('\n') } },
-  { startRow: 574, endRow: 593, rows: mhmapRows, fields: { B: (item) => item?.name, C: (item) => item?.expiry, D: (item) => item?.lot, E: (item) => item?.deliveries?.map((delivery) => delivery.date).filter(Boolean).join('\n') } },
+  { startRow: 4, endRow: 475, rows: regularRows },
+  { startRow: 478, endRow: 571, rows: donationRows },
+  { startRow: 574, endRow: 593, rows: mhmapRows },
 ]
+
+function inventoryReportCellValues(item, rowNumber) {
+  const ending = Number(item.ending ?? item.beginning ?? 0)
+  const status = ending <= 0 ? 'OUT OF STOCK' : ending <= 10 ? 'CRITICAL STOCK' : 'IN STOCK'
+  const values = {
+    A: item.no ?? '',
+    B: item.name || '',
+    C: item.expiry || '',
+    D: item.lot || '',
+    E: deliveryDates(item.deliveries),
+    F: deliveryQuantities(item.deliveries),
+    G: Number(item.beginning) || 0,
+    H: ending,
+    I: Number(item.monthly) || 0,
+    O: status,
+    P: item.remarks || '',
+  }
+  for (let index = 0; index < 5; index += 1) values[excelColumn(index + 10)] = Number(item.weekly?.[index]) || 0
+  return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
+}
+
+function hideUnusedReportRows(xml, startRow, endRow, visibleRows) {
+  const lastVisibleRow = startRow + visibleRows - 1
+  return xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g, (rowXml) => {
+    const rowNumber = Number(rowXml.match(/\br="(\d+)"/)?.[1])
+    if (!Number.isFinite(rowNumber) || rowNumber < startRow || rowNumber > endRow) return rowXml
+    const openingTag = rowXml.match(/^<row\b[^>]*>/)?.[0]
+    if (!openingTag) return rowXml
+    let nextOpeningTag = openingTag.replace(/\s+hidden="[^"]*"/, '')
+    if (rowNumber > lastVisibleRow) nextOpeningTag = nextOpeningTag.replace(/>$/, ' hidden="1">')
+    return rowXml.replace(openingTag, nextOpeningTag)
+  })
+}
+
+function adjustInventoryReportRowHeights(xml, group) {
+  const lines = (value) => String(value ?? '').split(/\r?\n/).filter((line) => line.trim()).length
+  const rowHeights = new Map(group.rows.map((item, index) => {
+    const deliveryLines = (item.deliveries || []).reduce((total, delivery) => {
+      const dateLines = lines(delivery.date)
+      const qtyAndVendorLines = lines([delivery.qty, delivery.vendor].filter((part) => part !== '' && part != null).join('\n'))
+      return total + Math.max(dateLines, qtyAndVendorLines)
+    }, 0)
+    const lineCount = Math.max(1, lines(item.expiry), lines(item.lot), deliveryLines)
+    return [group.startRow + index, lineCount * 20 + 4]
+  }))
+
+  return xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g, (rowXml) => {
+    const rowNumber = Number(rowXml.match(/\br="(\d+)"/)?.[1])
+    const requiredHeight = rowHeights.get(rowNumber)
+    if (!requiredHeight) return rowXml
+
+    const openingTag = rowXml.match(/^<row\b[^>]*>/)?.[0]
+    if (!openingTag) return rowXml
+    const currentHeight = Number(openingTag.match(/\bht="([\d.]+)"/)?.[1]) || 0
+    if (currentHeight >= requiredHeight) return rowXml
+
+    const nextOpeningTag = openingTag
+      .replace(/\s+ht="[^"]*"/, '')
+      .replace(/\s+customHeight="[^"]*"/, '')
+      .replace(/>$/, ` ht="${requiredHeight}" customHeight="1">`)
+    return rowXml.replace(openingTag, nextOpeningTag)
+  })
+}
 
 function rpciCellValues(item) {
   const deliveries = item?.deliveries || []
@@ -171,8 +235,8 @@ function rpciCellValues(item) {
     H: '',
     I: '',
     J: '',
-    K: deliveries.map((delivery) => delivery.date || '').filter(Boolean).join('\n'),
-    L: deliveries.map((delivery) => [delivery.qty, delivery.vendor].filter((part) => part !== '' && part != null).join(' ')).filter(Boolean).join('\n'),
+    K: deliveryDates(deliveries),
+    L: deliveryQuantities(deliveries),
   }
 }
 
@@ -221,8 +285,8 @@ function regularCellValues(item, rowNumber) {
     H: item.expiry,
     I: item.lot,
     J: item.beginning,
-    K: (item.deliveries || []).map((delivery) => delivery.date || '').filter(Boolean).join('\n'),
-    L: (item.deliveries || []).map((delivery) => [delivery.qty, delivery.vendor].filter((part) => part !== '' && part != null).join('\n')).filter(Boolean).join('\n'),
+    K: deliveryDates(item.deliveries),
+    L: deliveryQuantities(item.deliveries, '\n'),
     AS: item.ending,
     AT: item.monthly,
   }
@@ -243,8 +307,8 @@ function stockCellValues(item, rowNumber) {
     C: item.expiry,
     D: item.lot,
     E: item.beginning,
-    F: (item.deliveries || []).map((delivery) => delivery.date || '').filter(Boolean).join('\n'),
-    G: (item.deliveries || []).map((delivery) => [delivery.qty, delivery.vendor].filter((part) => part !== '' && part != null).join(' ')).filter(Boolean).join('\n'),
+    F: deliveryDates(item.deliveries),
+    G: deliveryQuantities(item.deliveries),
     AM: item.ending,
     AN: item.monthly,
   }
@@ -370,7 +434,7 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3 },
     {
       file: 'xl/worksheets/sheet5.xml',
-      blankGroups: inventoryReportGroups(regularRows, donationRows, mhmapRows),
+      reportGroups: inventoryReportGroups(regularRows, donationRows, mhmapRows),
       clearReferenceErrors: true,
       reportTitleCell: 'A1',
       sectionTitles: [{ cell: 'A476', value: 'DONATION' }],
@@ -407,8 +471,11 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
         xml = prepareDataRows(xml, group.startRow, group.endRow, group.rows.length)
       })
     }
-    if (sheet.blankGroups) {
-      xml = clearEmptyReportFields(xml, sheet.blankGroups)
+    if (sheet.reportGroups) {
+      sheet.reportGroups.forEach((group) => {
+        xml = hideUnusedReportRows(xml, group.startRow, group.endRow, group.rows.length)
+        xml = adjustInventoryReportRowHeights(xml, group)
+      })
     }
     if (sheet.clearReferenceErrors) xml = clearReferenceErrors(xml)
     if (sheet.rpciGroups) {
@@ -434,7 +501,6 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }).toUpperCase()
       const lastDay = new Date(year, month, 0).getDate()
       xml = setCell(xml, sheet.reportTitleCell, `INVENTORY REPORT ${monthLabel} ${lastDay}, ${year} 11:59PM`)
-      xml = xml.replace(/IF\(H(\d+)=0,"OUT OF STOCK",IF\(H\d+&lt;70,"CRITICAL STOCK","IN STOCK"\)\)/g, (_, row) => `IF(H${row}&lt;=0,"OUT OF STOCK",IF(H${row}&lt;=10,"CRITICAL STOCK","IN STOCK"))`)
     }
     sheet.sectionTitles?.forEach(({ cell, value }) => {
       xml = setCell(xml, cell, value)
@@ -449,6 +515,11 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
         mapRow(item, index + group.startRow).forEach(([reference, value]) => {
           if (value !== null && value !== undefined) cellUpdates.set(reference, value)
         })
+      })
+    })
+    sheet.reportGroups?.forEach((group) => {
+      group.rows.forEach((item, index) => {
+        inventoryReportCellValues(item, index + group.startRow).forEach(([reference, value]) => cellUpdates.set(reference, value))
       })
     })
     xml = applyCellUpdates(xml, cellUpdates)

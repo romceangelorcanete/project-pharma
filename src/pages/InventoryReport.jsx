@@ -79,7 +79,7 @@ export default function InventoryReport({ stockMonth, onStockMonthChange }) {
         <div><span className="ledger-kicker">E-STOCK / INVENTORY</span><h2 id="inventory-report-title">Inventory Report</h2><p>Combined Regular Stocks, Donation, and MHMAP report</p></div>
         <div className="inventory-report-heading-actions"><span className="sample-indicator"><i /> Sample data</span><label className="inventory-report-period"><span>Date / year</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></label></div>
       </header>
-      <div className="inventory-report-toolbar"><p>Sample report <span>· {totalItems} items</span></p><ExportEstockButton activeSheet="inventory" stockMonth={stockMonth} /></div>
+      <div className="inventory-report-toolbar"><p>Sample report <span>· {totalItems} items</span></p><ExportEstockButton activeSheet="inventory" stockMonth={stockMonth} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} /></div>
       <label className="inventory-report-search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.8" cy="8.8" r="5.7"/><path d="m13 13 4 4"/></svg><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Items" aria-label="Search inventory items" /></label>
       <div className="inventory-report-print-title">{reportTitle}</div>
       <div className="inventory-report-sections">{groups.map((group) => <ReportSection key={group.id} group={group} search={search} />)}</div>
