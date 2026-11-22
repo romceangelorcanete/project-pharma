@@ -19,9 +19,9 @@ export default function UserManagement({ csrfToken, onUserUpdated }) {
   const [savingUser, setSavingUser] = useState(false)
   const [routeEditUserId, setRouteEditUserId] = useState(getEditUserIdFromPath)
 
-  async function loadUsers() {
-    setLoadingUsers(true)
-    setLoadError('')
+  async function loadUsers({ showSpinner = true, clearError = true } = {}) {
+    if (showSpinner) setLoadingUsers(true)
+    if (clearError) setLoadError('')
     try {
       const result = await requestJson('/api/users/index.php')
       setUsers(result.users || [])
@@ -32,28 +32,6 @@ export default function UserManagement({ csrfToken, onUserUpdated }) {
     }
   }
 
-  useEffect(() => {
-    loadUsers()
-  }, [])
-
-  useEffect(() => {
-    function syncEditRoute() {
-      setRouteEditUserId(getEditUserIdFromPath())
-    }
-    window.addEventListener('popstate', syncEditRoute)
-    return () => window.removeEventListener('popstate', syncEditRoute)
-  }, [])
-
-  useEffect(() => {
-    if (!routeEditUserId) {
-      setUserFormOpen(false)
-      setEditingUser(null)
-      return
-    }
-    const user = users.find((entry) => String(entry.id) === routeEditUserId)
-    if (user) openForm(user)
-  }, [routeEditUserId, users])
-
   function openForm(user = null) {
     setEditingUser(user)
     setUserFormOpen(true)
@@ -62,6 +40,42 @@ export default function UserManagement({ csrfToken, onUserUpdated }) {
       : { fullName: '', positionTitle: '', username: '', password: '', role: 'pharmacist', isActive: true })
     setFormError('')
   }
+
+  useEffect(() => {
+    let active = true
+    requestJson('/api/users/index.php')
+      .then((result) => {
+        if (!active) return
+        const loadedUsers = result.users || []
+        setUsers(loadedUsers)
+        const routeUserId = getEditUserIdFromPath()
+        const routeUser = loadedUsers.find((user) => String(user.id) === routeUserId)
+        if (routeUser) openForm(routeUser)
+      })
+      .catch((error) => {
+        if (active) setLoadError(error.message || 'Could not load users.')
+      })
+      .finally(() => {
+        if (active) setLoadingUsers(false)
+      })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    function syncEditRoute() {
+      const nextUserId = getEditUserIdFromPath()
+      setRouteEditUserId(nextUserId)
+      if (!nextUserId) {
+        setUserFormOpen(false)
+        setEditingUser(null)
+        return
+      }
+      const user = users.find((entry) => String(entry.id) === nextUserId)
+      if (user) openForm(user)
+    }
+    window.addEventListener('popstate', syncEditRoute)
+    return () => window.removeEventListener('popstate', syncEditRoute)
+  }, [users])
 
   function openEditRoute(user) {
     const userId = String(user.id)
@@ -91,7 +105,7 @@ export default function UserManagement({ csrfToken, onUserUpdated }) {
     event.preventDefault()
     setFormError('')
     if (!form.fullName.trim() || !form.username.trim()) {
-      setFormError('Enter the userâ€™s full name and username.')
+      setFormError("Enter the user's full name and username.")
       return
     }
     if ((!editingUser || form.password) && form.password.length < 8) {
@@ -143,9 +157,9 @@ export default function UserManagement({ csrfToken, onUserUpdated }) {
         {loadError && <p className="users-load-error" role="alert">{loadError}</p>}
         <div className="users-table-scroll"><table className="users-table"><thead><tr><th>USER ID</th><th>FULL NAME</th><th>POSITION / TITLE</th><th>USERNAME</th><th>ROLE</th><th>STATUS</th><th>CREATED AT</th><th className="users-actions-heading">ACTIONS</th></tr></thead><tbody>
           {users.map((user) => <tr key={user.id} className={selectedId === user.id ? 'selected-user-row' : ''} aria-selected={selectedId === user.id} onClick={() => setSelectedId(user.id)} tabIndex="0" onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedId(user.id) }}>
-            <td className="user-id-cell">{user.id.toString().padStart(3, '0')}</td><td><strong className="user-full-name">{user.fullName}</strong></td><td>{user.positionTitle || '—'}</td><td className="username-cell">{user.username}</td><td><span className={`user-role-badge ${user.role === 'admin' ? 'admin-role' : 'pharmacist-role'}`}>{roleTitle(user.role)}</span></td><td><span className={`user-status ${user.isActive ? 'user-active' : 'user-inactive'}`}><i />{user.isActive ? 'Active' : 'Inactive'}</span></td><td className="user-created-cell">{user.createdAt ? new Date(user.createdAt.replace(' ', 'T')).toLocaleDateString() : 'â€”'}</td><td><div className="user-row-actions"><button type="button" onClick={(event) => { event.stopPropagation(); openEditRoute(user) }}>Edit</button><button type="button" className="delete-user-action" onClick={(event) => { event.stopPropagation(); deleteUser(user) }}>Delete</button></div></td>
+            <td className="user-id-cell">{user.id.toString().padStart(3, '0')}</td><td><strong className="user-full-name">{user.fullName}</strong></td><td>{user.positionTitle || '—'}</td><td className="username-cell">{user.username}</td><td><span className={`user-role-badge ${user.role === 'admin' ? 'admin-role' : 'pharmacist-role'}`}>{roleTitle(user.role)}</span></td><td><span className={`user-status ${user.isActive ? 'user-active' : 'user-inactive'}`}><i />{user.isActive ? 'Active' : 'Inactive'}</span></td><td className="user-created-cell">{user.createdAt ? new Date(user.createdAt.replace(' ', 'T')).toLocaleDateString() : '—'}</td><td><div className="user-row-actions"><button type="button" onClick={(event) => { event.stopPropagation(); openEditRoute(user) }}>Edit</button><button type="button" className="delete-user-action" onClick={(event) => { event.stopPropagation(); deleteUser(user) }}>Delete</button></div></td>
           </tr>)}
-          {loadingUsers && <tr><td className="users-empty-state" colSpan="8">Loading user accountsâ€¦</td></tr>}
+          {loadingUsers && <tr><td className="users-empty-state" colSpan="8">Loading user accounts...</td></tr>}
           {!loadingUsers && users.length === 0 && <tr><td className="users-empty-state" colSpan="8">No user accounts found. Add a user to get started.</td></tr>}
         </tbody></table></div>
         <div className="users-table-footer">{selectedId ? `Selected user ID ${selectedId}` : 'Select a user row to highlight it'}<span>Showing {users.length} account{users.length === 1 ? '' : 's'}</span></div>
@@ -163,7 +177,7 @@ export default function UserManagement({ csrfToken, onUserUpdated }) {
             <label className="user-active-toggle"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Active account</label>
             {formError && <p className="user-form-error" role="alert">{formError}</p>}
             <p className="user-form-note">Passwords are hashed before they are stored. The password is never displayed.</p>
-            <div className="user-form-actions"><button type="button" className="cancel-user-button" onClick={closeForm} disabled={savingUser}>Cancel</button><button type="submit" className="add-user-button" disabled={savingUser}>{savingUser ? 'Savingâ€¦' : editingUser ? 'Save changes' : 'Add user'}</button></div>
+            <div className="user-form-actions"><button type="button" className="cancel-user-button" onClick={closeForm} disabled={savingUser}>Cancel</button><button type="submit" className="add-user-button" disabled={savingUser}>{savingUser ? 'Saving...' : editingUser ? 'Save changes' : 'Add user'}</button></div>
           </form>
         </section>
       </div>}

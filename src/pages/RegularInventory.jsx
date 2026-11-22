@@ -46,7 +46,7 @@ function toExpiryStockValue(value = '') {
     : `${Number(match[2])}/${Number(match[3])}/${match[1]}`
 }
 
-export default function RegularInventory({ stockMonth, onStockMonthChange, onOpenStockCard, stockCardReturnUpdater, preparedBy, preparedByPosition }) {
+export default function RegularInventory({ stockMonth, onStockMonthChange, onOpenStockCard, registerStockCardReturnUpdater, preparedBy, preparedByPosition }) {
   const [rows, setRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const draftStorageKey = `pharma-inventory-form-draft:regular:${stockMonth}`
   const [savedFormDraft] = useState(() => {
@@ -68,11 +68,11 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     } catch { /* Keep the form usable when browser storage is unavailable. */ }
   }, [draftStorageKey, addItemOpen, editingItemNo, itemForm])
   useEffect(() => {
-    if (!stockCardReturnUpdater) return undefined
+    if (!registerStockCardReturnUpdater) return undefined
     const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: toDateInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries }))
-    stockCardReturnUpdater.current = updateDraft
-    return () => { if (stockCardReturnUpdater.current === updateDraft) stockCardReturnUpdater.current = null }
-  }, [stockCardReturnUpdater])
+    registerStockCardReturnUpdater(updateDraft)
+    return () => registerStockCardReturnUpdater(null)
+  }, [registerStockCardReturnUpdater])
   const [year, monthNumber] = stockMonth.split('-').map(Number)
   const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const visibleRows = rows

@@ -33,14 +33,14 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
   const [regularRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const [donationRows] = useInventoryRows('donation', sampleDonationRows, stockMonth)
   const [mhmapRows] = useInventoryRows('mhmap', sampleMhmapRows, stockMonth)
-  const sectionRows = { regular: regularRows, donation: donationRows, mhmap: mhmapRows }
+  const sectionRows = useMemo(() => ({ regular: regularRows, donation: donationRows, mhmap: mhmapRows }), [regularRows, donationRows, mhmapRows])
   const [year, monthNumber] = stockMonth.split('-').map(Number)
   const firstYear = Math.min(2026, year)
   const lastYear = Math.max(2100, year)
   const yearOptions = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index)
   const selectedSection = sections.find((item) => item.id === activeType) || sections[0]
-  const section = { ...selectedSection, rows: sectionRows[selectedSection.id] }
-  const visibleRows = useMemo(() => section.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())), [section, search])
+  const section = useMemo(() => ({ ...selectedSection, rows: sectionRows[selectedSection.id] }), [selectedSection, sectionRows])
+  const visibleRows = useMemo(() => section.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())), [section.rows, search])
 
   function changeYear(nextYear) {
     onStockMonthChange(`${nextYear}-${String(monthNumber).padStart(2, '0')}`)

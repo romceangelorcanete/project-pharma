@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
 import ExportEstockButton from '../components/ExportEstockButton.jsx'
@@ -44,7 +44,7 @@ function expiryToStock(value = '') {
   return match[3] === '01' ? `${match[2]}/${match[1]}` : `${Number(match[2])}/${Number(match[3])}/${match[1]}`
 }
 
-export default function DonationInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard, stockCardReturnUpdater, preparedBy, preparedByPosition, inventoryType = 'donation', initialRows = sampleDonationRows, weeklyRanges = donationWeeklyRanges }) {
+export default function DonationInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard, registerStockCardReturnUpdater, preparedBy, preparedByPosition, inventoryType = 'donation', initialRows = sampleDonationRows, weeklyRanges = donationWeeklyRanges }) {
   const isMhmap = inventoryType === 'mhmap'
   const pageLabel = isMhmap ? 'MHMAP' : 'Donation'
   const pageClass = isMhmap ? 'mhmap-inventory-page' : 'donation-inventory-page'
@@ -68,12 +68,12 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
     } catch { /* Keep the form usable when browser storage is unavailable. */ }
   }, [draftStorageKey, itemFormOpen, editingNo, itemForm])
   useEffect(() => {
-    if (!stockCardReturnUpdater) return undefined
+    if (!registerStockCardReturnUpdater) return undefined
     const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: dateToInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries }))
-    stockCardReturnUpdater.current = updateDraft
-    return () => { if (stockCardReturnUpdater.current === updateDraft) stockCardReturnUpdater.current = null }
-  }, [stockCardReturnUpdater])
-  const dropdownOptions = useMemo(getRegularDropdownOptions, [])
+    registerStockCardReturnUpdater(updateDraft)
+    return () => registerStockCardReturnUpdater(null)
+  }, [registerStockCardReturnUpdater])
+  const [dropdownOptions] = useState(getRegularDropdownOptions)
   const visibleRows = rows
     .filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
     .filter((item) => unitFilter === 'all' || item.unit === unitFilter)

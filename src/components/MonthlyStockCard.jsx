@@ -1,6 +1,7 @@
+const currentCalendarYear = new Date().getFullYear()
+
 export default function MonthlyStockCard({ rows, periodLabels, regular = false, monthLabel = 'November 2026', onItemClick }) {
   const days = Array.from({ length: 31 }, (_, index) => index + 1)
-  const currentYear = new Date().getFullYear()
   return (
     <div className="ledger-scroll" role="region" aria-label={`${regular ? 'Regular' : 'Donation'} inventory monthly stock card, scroll horizontally to view all columns`} tabIndex="0">
       <table className={`ledger-table ${regular ? 'regular-grid-table' : 'donation-grid-table'}`}>
@@ -23,7 +24,7 @@ export default function MonthlyStockCard({ rows, periodLabels, regular = false, 
           <td className={`ledger-expiry ${regular ? 'ledger-expiry-colored' : ''}`}>{regular ? String(item.expiry || '').split('\n').filter(Boolean).map((expiry, index) => {
             const yearMatch = expiry.match(/(\d{4})\s*$/)
             const expiryYear = yearMatch ? Number(yearMatch[1]) : null
-            const yearClass = expiryYear === currentYear ? 'expiry-current-year' : expiryYear === currentYear + 1 ? 'expiry-next-year' : 'expiry-normal-year'
+            const yearClass = expiryYear === currentCalendarYear ? 'expiry-current-year' : expiryYear === currentCalendarYear + 1 ? 'expiry-next-year' : 'expiry-normal-year'
             return <span className={`ledger-expiry-date ${yearClass}`} key={`${expiry}-${index}`}>{expiry}</span>
           }) : item.expiry}</td><td className="ledger-lot">{item.lot}</td><td className="ledger-beginning">{item.beginning}</td>
           <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>

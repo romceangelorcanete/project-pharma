@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import UserManagement from "./UserManagement.jsx";
 import RegularInventory, { sampleRegularRows } from "./RegularInventory.jsx";
 import RegularDropdownOptions from "./RegularDropdownOptions.jsx";
@@ -8,7 +8,6 @@ import MhmapInventory from "./MhmapInventory.jsx";
 import MonthlyConsumption from "./MonthlyConsumption.jsx";
 import InventoryReport from "./InventoryReport.jsx";
 import RPCIReport from "./RPCIReport.jsx";
-const donationWeeklyRanges = ["1-3", "4-10", "11-17", "18-24", "25-30"];
 const dashboardSectionKeys = [
   "overview",
   "regular",
@@ -198,6 +197,9 @@ export default function AdminDashboard({
     getSavedStockCardReturnSection,
   );
   const stockCardReturnUpdater = useRef(null);
+  const registerStockCardReturnUpdater = useCallback((updater) => {
+    stockCardReturnUpdater.current = updater;
+  }, []);
   const [stockMonth, setStockMonth] = useState(getSavedStockMonth);
   const [clockNow, setClockNow] = useState(() => new Date());
   const preparedByName = user?.fullName || user?.username || '';
@@ -255,7 +257,7 @@ export default function AdminDashboard({
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  }, [activeSection]);
 
   useEffect(() => {
     try {
@@ -702,7 +704,7 @@ export default function AdminDashboard({
               stockMonth={stockMonth}
               onStockMonthChange={setStockMonth}
               onOpenStockCard={openStockCard}
-              stockCardReturnUpdater={stockCardReturnUpdater}
+              registerStockCardReturnUpdater={registerStockCardReturnUpdater}
             />
           </div>
         )}
@@ -741,7 +743,7 @@ export default function AdminDashboard({
               onStockMonthChange={setStockMonth}
               monthLabel={stockMonthLabel}
               onOpenStockCard={openStockCard}
-              stockCardReturnUpdater={stockCardReturnUpdater}
+              registerStockCardReturnUpdater={registerStockCardReturnUpdater}
             />
           </div>
         )}
@@ -762,7 +764,7 @@ export default function AdminDashboard({
               onStockMonthChange={setStockMonth}
               monthLabel={stockMonthLabel}
               onOpenStockCard={openStockCard}
-              stockCardReturnUpdater={stockCardReturnUpdater}
+              registerStockCardReturnUpdater={registerStockCardReturnUpdater}
             />
           </div>
         )}

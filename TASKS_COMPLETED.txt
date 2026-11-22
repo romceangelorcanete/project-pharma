@@ -71,6 +71,7 @@ Regular inventory sample row editing - November 15, 2026
 - The form includes the Regular stock-card fields: item details, multiple deliveries, daily consumption (days 1-31), SL RET, ending balance, monthly consumption, and all weekly consumption periods.
 - Saving updates the selected row in local page state only; no database changes.
 - `npm run build` completed successfully.
+
  
 Sidebar Stock Cards shortcut - November 15, 2026
 - Restored the E-STOCK submenu label and added a separate Stock Cards shortcut that opens Regular inventory.
@@ -81,7 +82,7 @@ Regular expiry date year colors - November 16, 2026
 - Rendered each Regular expiry date separately so mixed years in one cell are colored independently.
 - Current calendar year is green, next calendar year is red, and dates beyond next year stay white.
 - `npm run build` completed successfully.
- 
+
 Regular sample item multiple expiry dates - November 16, 2026
 - Added repeatable expiry date entries to the Regular Add/Edit item form, alongside repeatable delivery entries.
 - Saved multiple expiry dates as separate values so year-based green/red/white coloring applies independently in the stock card.
@@ -297,4 +298,12 @@ User Management position title and laptop database setup - November 22, 2026
 - Added the signed-in user's name and position title to the Stock Card print footer.
 - Adjusted User Management table column widths so all columns fit on desktop; retained horizontal scrolling on smaller screens.
 - `npm run build` completed successfully.
+
+Code cleanup and React stability - November 22, 2026
+- Stabilized memoized filtering and grouped rows in Monthly Consumption and Inventory Report to avoid rebuilding derived data unnecessarily.
+- Memoized Stock Card running balances so rendering does not mutate a shared balance variable.
+- Updated stock-card draft callbacks to register and clean up through a stable callback instead of passing a mutable ref into inventory pages.
+- Improved User Management initial loading cleanup and browser Back/Forward handling for direct edit routes.
+- Removed render-time date calculation from Monthly Stock Card and cleaned malformed text characters in User Management.
+- `npm run build` completed successfully; `npm run lint` reports no errors and three remaining React Fast Refresh warnings for sample-data exports in the inventory page modules.
 

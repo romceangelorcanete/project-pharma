@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './StockCardView.css'
 
 function toISODate(value = '') {
@@ -47,11 +47,15 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
   })
   const [rows, setRows] = useState(() => savedCardDraft?.rows || getInitialRows(item, stockMonth))
   const [beginningBalance, setBeginningBalance] = useState(() => Number(savedCardDraft?.beginningBalance ?? item.beginning) || 0)
-  let balance = beginningBalance
-  const sheetRows = rows.map((row) => {
-    if (hasEntry(row)) balance += (Number(row.receipt) || 0) - (Number(row.issue) || 0)
-    return { ...row, balance: hasEntry(row) ? balance : '' }
-  })
+  const sheetRows = useMemo(() => rows.reduce((result, row) => {
+    const hasTransaction = hasEntry(row)
+    const previousBalance = result.balance
+    const balance = hasTransaction
+      ? previousBalance + (Number(row.receipt) || 0) - (Number(row.issue) || 0)
+      : previousBalance
+    result.rows.push({ ...row, balance: hasTransaction ? balance : '' })
+    return { balance, rows: result.rows }
+  }, { balance: beginningBalance, rows: [] }).rows, [beginningBalance, rows])
 
   useEffect(() => {
     try {

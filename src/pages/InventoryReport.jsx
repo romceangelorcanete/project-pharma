@@ -62,16 +62,16 @@ export default function InventoryReport({ stockMonth, onStockMonthChange, prepar
   const [regularRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const [donationRows] = useInventoryRows('donation', sampleDonationRows, stockMonth)
   const [mhmapRows] = useInventoryRows('mhmap', sampleMhmapRows, stockMonth)
-  const groups = [
+  const groups = useMemo(() => [
     { ...groupLabels[0], rows: regularRows },
     { ...groupLabels[1], rows: donationRows },
     { ...groupLabels[2], rows: mhmapRows },
-  ]
+  ], [regularRows, donationRows, mhmapRows])
   const [year, month] = stockMonth.split('-').map(Number)
   const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long' }).toUpperCase()
   const lastDay = new Date(year, month, 0).getDate()
   const reportTitle = `INVENTORY REPORT ${monthName} ${lastDay}, ${year} 11:59 PM`
-  const totalItems = useMemo(() => groups.reduce((sum, group) => sum + group.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())).length, 0), [search])
+  const totalItems = useMemo(() => groups.reduce((sum, group) => sum + group.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())).length, 0), [groups, search])
 
   return <div className="section-page-content inventory-report-page">
     <section className="dashboard-card inventory-report-card" aria-labelledby="inventory-report-title">
