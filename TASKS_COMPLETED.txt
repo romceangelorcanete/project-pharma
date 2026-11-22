@@ -1,8 +1,10 @@
 JVGH PHARMACY INVENTORY SYSTEM - TASK UPDATE
-Updated: November 14, 2026
+Updated: November 22, 2026
  
 COMPLETED
  
+Initial system setup - November 14, 2026
+
 Dashboard and navigation
 - Added the admin dashboard overview with summary cards, stock activity, recent activity, and team access panels.
 - Added the E-STOCK submenu for Regular, Donation, and MHMAP.
@@ -30,9 +32,8 @@ Responsive sidebar
 - On small screens, the expanded menu opens as a drawer; selecting a section returns to the icon rail.
  
 CURRENT NOTES
-- User accounts use the live PHP/database connection.
-- Inventory screens and overview metrics remain sample UI data.
-- No database schema changes or spreadsheet data imports were made as part of this work.
+- User accounts use the PHP API and MySQL database; the users table includes `position_title`.
+- Inventory pages use sample/browser-stored inventory records; the supplied spreadsheet has not been bulk-imported into the database.
  
 VERIFICATION
 - `npm run build` completed successfully after the User Management component refactor.
@@ -247,36 +248,49 @@ RPCI physical count preview and print - November 19, 2026
 - Made Prepared by and Noted by names and positions editable in the preview; signature names use the requested underline styling.
  
 How to run / deploy (PC = Admin, Laptop = Pharmacist) - November 20, 2026
-- Setup: the PC runs everything (React + Vite, PHP API, XAMPP MySQL, phpMyAdmin, Cloudflare Tunnel). The laptop only needs a browser and the Cloudflare link.
-- Data flow: Laptop -> Cloudflare -> Vite (5173) -> PHP (8081) -> MySQL.
-- vite.config.js: server.allowedHosts includes '.trycloudflare.com'; the /api proxy points to http://127.0.0.1:8081 and strips the /api prefix.
- 
-  STEPS ON THE PC
-  1. XAMPP Control Panel: start MySQL only (Apache is not needed).
-  2. Terminal 1 (Vite + PHP):
-       cd C:\Users\Romce\OneDrive\Desktop\Project\project-pharma
-       npm run dev
-     Expected: Vite on port 5173, PHP on port 8081.
-     If PHP does not start on 8081, run in a separate terminal:
-       & "C:\Program Files\xampp\php\php.exe" -S 127.0.0.1:8081 -t "C:\Users\Romce\OneDrive\Desktop\Project\project-pharma\API"
-  3. Terminal 2 (Cloudflare Tunnel):
-       cd C:\Users\Romce\OneDrive\Desktop\Project\project-pharma
-       .\cloudflared.exe tunnel --url http://localhost:5173
-     If it times out or errors, add: --protocol http2
-  4. Copy the generated link (https://xxxx.trycloudflare.com) and send it to the laptop.
-  5. Admin: open http://localhost:5173 on the PC and log in.
- 
-  STEPS ON THE LAPTOP (Pharmacist)
-  - Open the trycloudflare link in Chrome or Edge and log in. Nothing to install.
- 
-  NOTES
-  - Do not close the tunnel terminal while someone is using the system.
-  - The link changes every time the tunnel restarts; send the new link to the laptop.
-  - Keep the PC on and set to never sleep; MySQL, npm run dev, and cloudflared must all be running.
-  - Do not expose phpMyAdmin or MySQL.
-  - The PHP server on port 8000 and Apache are not needed; keep PHP bound to 127.0.0.1.
-  - If the tunnel fails with "connection forcibly closed" or "Client.Timeout exceeded" on a hotspot network (192.168.137.x), switch to another WiFi or mobile data, or set DNS to 1.1.1.1 / 1.0.0.1 and run ipconfig /flushdns.
-  - Back up the database regularly: phpMyAdmin -> Export.
+
+SETUP REQUIREMENTS
+- Windows PC that hosts the system, with the project folder and internet access.
+- Node.js with npm, XAMPP MySQL, and the XAMPP PHP CLI. `npm install` is needed once after getting the project or when dependencies change.
+- Cloudflared available as `cloudflared.exe` in the project folder or installed on the PC.
+- A configured MySQL database named `pharma_inventory` and `API/config.local.php` containing the local MySQL host, port, database, username, and password. Keep this local credentials file private.
+- The pharmacist laptop needs only Chrome or Edge and the temporary Cloudflare URL; it does not need Node.js, PHP, XAMPP, or a local database.
+
+NETWORK FLOW
+- Laptop browser -> Cloudflare Tunnel -> Vite (port 5173) -> PHP API (127.0.0.1:8081) -> MySQL.
+- `vite.config.js` allows `*.trycloudflare.com` and proxies `/api` to the local PHP API. PHP and MySQL stay bound to the PC; do not expose MySQL or phpMyAdmin through the tunnel.
+
+FIRST-TIME DATABASE SETUP ON THE PC
+1. Start MySQL in XAMPP.
+2. For a fresh database, import `Database/schema.sql` using a trusted local MySQL tool. To restore a database backup, import the backup instead. Do not import a fresh schema over an existing database.
+3. Confirm `API/config.local.php` points to the local `pharma_inventory` database and has the correct MySQL credentials. The PHP API reads this file; it is not included in source control.
+4. If migrating an existing database that predates position titles, run `Database/add_position_title.sql` once. The SQL dump `Database/pharma_inventory.sql` already includes `position_title`.
+5. From the project folder, run `npm install` once if `node_modules` is missing.
+
+START THE SYSTEM ON THE PC
+1. Start MySQL in XAMPP. Apache is not needed for normal operation; use a local database tool only when importing or checking the database.
+2. In Terminal 1, run:
+   ```powershell
+   Set-Location D:\project-pharma
+   npm run dev
+   ```
+   This starts Vite on port 5173 and the PHP API on 127.0.0.1:8081. If XAMPP PHP is installed somewhere else, set `PHP_CLI` to its `php.exe` path before running the command.
+3. In Terminal 2, run:
+   ```powershell
+   Set-Location D:\project-pharma
+   .\cloudflared.exe tunnel --url http://localhost:5173
+   ```
+   If the tunnel times out, retry with `--protocol http2`.
+4. Open `http://localhost:5173` on the PC and share the generated `https://<generated-id>.trycloudflare.com` URL with the pharmacist laptop.
+
+CONNECT THE LAPTOP
+- Open the current Cloudflare URL in Chrome or Edge and sign in with the pharmacist account.
+- The URL changes when the tunnel restarts; send the new URL whenever that happens.
+
+KEEP IT RUNNING AND SECURE
+- Keep the PC awake and leave MySQL, `npm run dev`, and Cloudflared running while the laptop is connected. Closing any of those stops access.
+- PHP listens only on `127.0.0.1:8081`; do not expose phpMyAdmin or MySQL to the internet.
+- Back up the database regularly using a local database tool. On a hotspot network, if Cloudflare reports connection reset/timeouts, try another network; DNS changes are a last troubleshooting step.
 
 Stock Card editor and inventory calculations - November 20, 2026
 - Updated Regular, Donation, and MHMAP Stock Cards to open in-app and return to the matching inventory section without closing the item edit form.
