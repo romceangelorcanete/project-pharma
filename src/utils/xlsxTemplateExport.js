@@ -1,6 +1,7 @@
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 const encoder = new TextEncoder()
 let templateEntriesPromise
+const templateTextPromises = new Map()
 
 function crc32(bytes) {
   let crc = 0xffffffff
@@ -73,6 +74,30 @@ async function getTemplateEntries() {
       })
   }
   return (await templateEntriesPromise).map((entry) => ({ ...entry }))
+}
+
+async function getTemplateText(entry) {
+  if (!templateTextPromises.has(entry.name)) {
+    const textPromise = transformBytes(entry.compressedData, 'deflate-raw', DecompressionStream)
+      .then((bytes) => new TextDecoder().decode(bytes))
+      .catch((error) => {
+        templateTextPromises.delete(entry.name)
+        throw error
+      })
+    templateTextPromises.set(entry.name, textPromise)
+  }
+  return templateTextPromises.get(entry.name)
+}
+
+export async function preloadEstockTemplate() {
+  const entries = await getTemplateEntries()
+  const requiredFiles = new Set([
+    '[Content_Types].xml',
+    'xl/_rels/workbook.xml.rels',
+    'xl/workbook.xml',
+    ...Array.from({ length: 7 }, (_, index) => `xl/worksheets/sheet${index + 1}.xml`),
+  ])
+  await Promise.all(entries.filter((entry) => requiredFiles.has(entry.name)).map(getTemplateText))
 }
 
 async function transformBytes(bytes, format, Constructor) {
@@ -553,14 +578,12 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
   ]) {
     const entry = entries.find((candidate) => candidate.name === name)
     if (!entry) continue
-    const bytes = await transformBytes(entry.compressedData, 'deflate-raw', DecompressionStream)
-    entry.updatedText = new TextDecoder().decode(bytes).replace(removePattern, '')
+    entry.updatedText = (await getTemplateText(entry)).replace(removePattern, '')
   }
 
   const workbookEntry = entries.find((candidate) => candidate.name === 'xl/workbook.xml')
   if (workbookEntry) {
-    const bytes = await transformBytes(workbookEntry.compressedData, 'deflate-raw', DecompressionStream)
-    let workbookXml = new TextDecoder().decode(bytes)
+    let workbookXml = await getTemplateText(workbookEntry)
     const calcProperties = '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>'
     if (/<calcPr\b[^>]*(?:\/>|>[\s\S]*?<\/calcPr>)/.test(workbookXml)) {
       workbookXml = workbookXml.replace(/<calcPr\b[^>]*(?:\/>|>[\s\S]*?<\/calcPr>)/, calcProperties)
@@ -606,8 +629,7 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
   for (const sheet of sheets) {
     const entry = entries.find((candidate) => candidate.name === sheet.file)
     if (!entry) throw new Error(`Walang worksheet sa template: ${sheet.file}`)
-    const bytes = await transformBytes(entry.compressedData, 'deflate-raw', DecompressionStream)
-    let xml = new TextDecoder().decode(bytes)
+    let xml = await getTemplateText(entry)
     if (sheet.dataStartRow) {
       xml = prepareDataRows(xml, sheet.dataStartRow, lastWorksheetRow(xml), sheet.rows.length)
       xml = adjustInventoryReportRowHeights(xml, { rows: sheet.rows, startRow: sheet.dataStartRow })

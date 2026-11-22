@@ -275,6 +275,8 @@ START THE SYSTEM ON THE PC
    npm run dev
    ```
    This starts Vite on port 5173 and the PHP API on 127.0.0.1:8081. If XAMPP PHP is installed somewhere else, set `PHP_CLI` to its `php.exe` path before running the command.
+   To check the PHP server directly, open `http://127.0.0.1:8081/ping.php`; it should return JSON. The bare `http://127.0.0.1:8081/` may show 404 because the API directory has no root page. This ping only confirms PHP is responding; sign in to the app to check the database connection.
+   To check that the Vite proxy and Cloudflare route reach PHP, open `<app-origin>/api/ping.php` (for example, `http://localhost:5173/api/ping.php` or the current Cloudflare URL followed by `/api/ping.php`).
 3. In Terminal 2, run:
    ```powershell
    Set-Location D:\project-pharma
@@ -320,4 +322,9 @@ Code cleanup and React stability - November 22, 2026
 - Improved User Management initial loading cleanup and browser Back/Forward handling for direct edit routes.
 - Removed render-time date calculation from Monthly Stock Card and cleaned malformed text characters in User Management.
 - `npm run build` completed successfully; `npm run lint` reports no errors and three remaining React Fast Refresh warnings for sample-data exports in the inventory page modules.
+
+E-STOCK export loading optimization - November 22, 2026
+- Preloaded the Excel template and prepared worksheet XML when the inventory screen opens, so the first Export click does not need to start the template download.
+- Cached decompressed worksheet XML for repeat exports and added a disabled `Preparing...` button state to prevent duplicate exports.
+- `npm run build` completed successfully. Actual download time still depends on the laptop's connection to the Cloudflare tunnel; allow the initial template preload to finish before exporting.
 

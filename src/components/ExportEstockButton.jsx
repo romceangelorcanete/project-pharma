@@ -1,8 +1,18 @@
+import { useEffect, useState } from 'react'
 import { createEstockWorkbook } from '../utils/xlsxTemplateExport.js'
+import { preloadEstockTemplate } from '../utils/xlsxTemplateExport.js'
 import { readInventoryRows } from '../hooks/useInventoryRows.js'
 
 export default function ExportEstockButton({ rows, regularRows, donationRows, mhmapRows, preparedBy = '', preparedByPosition = '', activeSheet = 'regular', stockMonth = '2026-11', consumptionYear = 2026 }) {
+  const [exporting, setExporting] = useState(false)
+
+  useEffect(() => {
+    preloadEstockTemplate().catch(() => {})
+  }, [])
+
   async function downloadWorkbook() {
+    if (exporting) return
+    setExporting(true)
     try {
       const [regularModule, donationModule, mhmapModule] = await Promise.all([
         import('../pages/RegularInventory.jsx'),
@@ -36,13 +46,15 @@ export default function ExportEstockButton({ rows, regularRows, donationRows, mh
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Hindi ma-download ang E-STOCK workbook. Pakisubukan ulit.')
+    } finally {
+      setExporting(false)
     }
   }
 
   return (
-    <button className="regular-export-button" type="button" onClick={downloadWorkbook}>
+    <button className="regular-export-button" type="button" onClick={downloadWorkbook} disabled={exporting} aria-busy={exporting}>
       <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 13v3h12v-3" /></svg>
-      Export Excel
+      {exporting ? 'Preparing...' : 'Export Excel'}
     </button>
   )
 }
