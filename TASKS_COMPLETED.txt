@@ -290,3 +290,11 @@ Stock Card editor and inventory calculations - November 20, 2026
 RPCI Noted by signature default - November 20, 2026
 - Set the editable Noted by defaults to Jeremie V. Villanueva-San Juan, RPh and PHARMACIST III.
 
+User Management position title and laptop database setup - November 22, 2026
+- Added `position_title` to the user database schema and SQL dump; added an idempotent migration for existing laptop databases.
+- Position / title is uppercased in the User Management form and API, and is included in user records returned by the API.
+- Synced an updated signed-in user's position title immediately to E-STOCK exports and the Stock Card print view.
+- Added the signed-in user's name and position title to the Stock Card print footer.
+- Adjusted User Management table column widths so all columns fit on desktop; retained horizontal scrolling on smaller screens.
+- `npm run build` completed successfully.
+
