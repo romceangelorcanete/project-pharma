@@ -193,7 +193,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     <div className="section-page-content">
       <section className="dashboard-card regular-ledger-card" id="regular">
         <div className="ledger-heading">
-          <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
+          <div><span className="ledger-kicker">E-STOCK / REGULAR</span><h2>Regular Inventory</h2><p>Monthly stock card · {monthLabel}</p></div>
           <div className="ledger-actions"><span className="sample-indicator"><i /> Sample data</span></div>
         </div>
         <div className="regular-inventory-actions"><span>Sample only · not saved to database</span><div className="regular-toolbar-actions"><div className="regular-period-control"><span>Date / year</span><MonthYearPicker value={stockMonth} onChange={onStockMonthChange} /></div><ExportEstockButton rows={rows} preparedBy={preparedBy} preparedByPosition={preparedByPosition} activeSheet="regular" stockMonth={stockMonth} /><button className="regular-add-item-button" type="button" onClick={beginAddItem}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>Add item</button></div></div>

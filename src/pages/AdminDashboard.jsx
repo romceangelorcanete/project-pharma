@@ -191,6 +191,7 @@ export default function AdminDashboard({
 }) {
   const [stockMenuOpen, setStockMenuOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarOpen);
+  const sidebarIdleTimer = useRef(null);
   const [activeSection, setActiveSection] = useState(getSavedDashboardSection);
   const [selectedStockCard, setSelectedStockCard] = useState(getSavedStockCard);
   const [stockCardReturnSection, setStockCardReturnSection] = useState(
@@ -211,6 +212,25 @@ export default function AdminDashboard({
     1,
   ).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const liveClockLabel = `${clockNow.toLocaleDateString("en-US", { weekday: "long" })}, ${clockNow.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}, ${clockNow.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase()}`;
+
+  function scheduleSidebarAutoCollapse() {
+    window.clearTimeout(sidebarIdleTimer.current);
+    if (window.innerWidth <= 760) return;
+    sidebarIdleTimer.current = window.setTimeout(() => setSidebarOpen(false), 3000);
+  }
+
+  function handleSidebarPointerActivity() {
+    if (window.innerWidth <= 760) return;
+    setSidebarOpen(true);
+    scheduleSidebarAutoCollapse();
+  }
+
+  useEffect(() => {
+    if (sidebarOpen) scheduleSidebarAutoCollapse();
+    else window.clearTimeout(sidebarIdleTimer.current);
+    return () => window.clearTimeout(sidebarIdleTimer.current);
+  }, [sidebarOpen]);
+
   function navigateToSection(section) {
     setActiveSection(section);
     const route = section === "overview" ? "/dashboard" : `/${section}`;
@@ -283,21 +303,6 @@ export default function AdminDashboard({
     }
   }, [selectedStockCard, stockCardReturnSection, stockMonth]);
 
-  const sectionTitles = {
-    overview: "Dashboard",
-    regular: "Regular inventory",
-    "regular-options": "Dropdown Settings",
-    "stock-cards": "Stock Cards",
-    donation: "Donation inventory",
-    mhmap: "MHMAP inventory",
-    "monthly-consumption": "Monthly Consumption",
-    inventory: "Inventory",
-    "rpci-regular": "RPCI Regular",
-    "rpci-donation": "RPCI Donation",
-    "user-management": "User Management",
-  };
-  const sectionTitle = sectionTitles[activeSection] || "Dashboard";
-
   return (
     <main
       className={`dashboard-shell ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}
@@ -314,6 +319,9 @@ export default function AdminDashboard({
         className={`dashboard-sidebar ${sidebarOpen ? "is-open" : ""}`}
         id="admin-sidebar"
         aria-label="Workspace sidebar"
+        onMouseEnter={handleSidebarPointerActivity}
+        onMouseMove={handleSidebarPointerActivity}
+        onMouseLeave={scheduleSidebarAutoCollapse}
       >
         <div className="sidebar-brand-row">
           <a
@@ -330,21 +338,6 @@ export default function AdminDashboard({
               JVGH <strong>PHARMACY</strong>
             </span>
           </a>
-          <button
-            className="sidebar-toggle"
-            type="button"
-            aria-label={
-              sidebarOpen ? "Collapse sidebar to icons" : "Expand sidebar"
-            }
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            aria-expanded={sidebarOpen}
-            aria-controls="admin-sidebar"
-            onClick={() => setSidebarOpen((open) => !open)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
           <button
             className="sidebar-mobile-close"
             type="button"
@@ -505,13 +498,7 @@ export default function AdminDashboard({
       </aside>
 
       <section className="dashboard-main" id="overview">
-        <header className="dashboard-header">
-          <div className="dashboard-title-group">
-            <div>
-              <p className="eyebrow">PHARMACY INVENTORY SYSTEM</p>
-              <h1>{sectionTitle}</h1>
-            </div>
-          </div>
+        <header className="dashboard-header dashboard-header--actions-only">
           <div className="dashboard-header-actions">
             <time className="dashboard-live-clock">{liveClockLabel}</time>
             <span className="sample-indicator">

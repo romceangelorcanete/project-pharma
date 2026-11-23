@@ -349,16 +349,21 @@
 .dashboard-sidebar { position: sticky; top: 0; height: 100vh; min-width: 0; display: flex; flex-direction: column; padding: 27px 17px 18px; overflow: hidden; border-right: 1px solid #e8ede9; background: #fff; transition: width 180ms ease, padding 180ms ease, transform 180ms ease; }
 .dashboard-shell.sidebar-closed .dashboard-sidebar { width: 68px; align-items: center; padding: 22px 7px 14px; visibility: visible; }
 .dashboard-shell.sidebar-closed .sidebar-brand-row { flex-direction: column; justify-content: center; gap: 9px; }
-.dashboard-shell.sidebar-closed .dashboard-brand > span:last-child, .dashboard-shell.sidebar-closed .sidebar-caption, .dashboard-shell.sidebar-closed .sidebar-label, .dashboard-shell.sidebar-closed .sidebar-chevron, .dashboard-shell.sidebar-closed .sidebar-link small, .dashboard-shell.sidebar-closed .sidebar-sublink-label, .dashboard-shell.sidebar-closed .sidebar-user-info, .dashboard-shell.sidebar-closed .sidebar-mobile-close { display: none; }
+.dashboard-shell.sidebar-closed .dashboard-brand > span:last-child, .dashboard-shell.sidebar-closed .sidebar-caption, .dashboard-shell.sidebar-closed .sidebar-label, .dashboard-shell.sidebar-closed .sidebar-chevron, .dashboard-shell.sidebar-closed .sidebar-link small, .dashboard-shell.sidebar-closed .sidebar-sublink-label, .dashboard-shell.sidebar-closed .sidebar-mobile-close { display: none; }
 .dashboard-shell.sidebar-closed .dashboard-brand { padding: 0; }
-.dashboard-shell.sidebar-closed .sidebar-nav { justify-items: center; width: 100%; margin-top: 27px; }
+.dashboard-shell.sidebar-closed .sidebar-nav { flex: 1; min-height: 0; justify-items: center; width: 100%; margin-top: 27px; overflow-y: auto; }
+.dashboard-shell.sidebar-closed .sidebar-nav { scrollbar-width: none; -ms-overflow-style: none; }
+.dashboard-shell.sidebar-closed .sidebar-nav::-webkit-scrollbar { display: none; }
 .dashboard-shell.sidebar-closed .sidebar-link { width: 50px; min-height: 46px; justify-content: center; gap: 0; padding: 0; }
 .dashboard-shell.sidebar-closed .sidebar-parent { width: 50px; }
 .dashboard-shell.sidebar-closed .sidebar-icon { width: auto; }
 .dashboard-shell.sidebar-closed .sidebar-submenu { justify-items: center; gap: 4px; margin: 5px 0 9px; padding: 0; border: 0; }
 .dashboard-shell.sidebar-closed .sidebar-sublink { width: 42px; min-height: 38px; justify-content: center; padding: 0; }
 .dashboard-shell.sidebar-closed .sidebar-submenu-icon { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: #f2f6f3; color: #5a7664; font-size: 10px; font-weight: 750; }
-.dashboard-shell.sidebar-closed .sidebar-bottom { flex-direction: column; gap: 8px; padding: 13px 0 0; }
+.dashboard-shell.sidebar-closed .sidebar-bottom { flex-direction: column; gap: 6px; padding: 13px 0 0; }
+.dashboard-shell.sidebar-closed .sidebar-user-info { display: grid; width: 56px; gap: 2px; text-align: center; }
+.dashboard-shell.sidebar-closed .sidebar-user-info strong { font-size: 8px; line-height: 1.2; overflow-wrap: anywhere; white-space: normal; }
+.dashboard-shell.sidebar-closed .sidebar-user-info span { font-size: 7px; }
 .sidebar-brand-row { display: flex; align-items: center; justify-content: space-between; }
 .sidebar-mobile-close { display: none; }
 .sidebar-backdrop { display: none; }
@@ -392,6 +397,7 @@
 .sidebar-user-info span { color: #89958e; font-size: 11px; }
 .dashboard-main { width: min(1440px, 100%); margin: 0 auto; padding: 0 38px 18px; }
 .dashboard-header { min-height: 90px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e6ebe7; }
+.dashboard-header--actions-only { justify-content: flex-end; }
 .dashboard-header .eyebrow { margin-bottom: 5px; font-size: 9px; }
 .dashboard-header h1 { margin: 0; color: #20352b; font-size: 23px; letter-spacing: -.035em; }
 .dashboard-header-actions { display: flex; align-items: center; gap: 14px; }
@@ -417,6 +423,8 @@
 .ledger-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 22px 15px; }
 .ledger-kicker { color: #4d8965; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
 .ledger-heading h2 { margin: 5px 0 0; color: #263c31; font-size: 17px; letter-spacing: -.025em; }
+#regular .ledger-heading h2 { font-size: 19px; }
+#donation .ledger-heading h2, #mhmap .ledger-heading h2 { font-size: 19px; }
 .ledger-heading p { margin: 5px 0 0; color: #8a968e; font-size: 11px; }
 .ledger-actions { display: flex; align-items: center; gap: 14px; }
 .ledger-filter { display: inline-flex; align-items: center; gap: 18px; padding: 8px 10px; border: 1px solid #e4eae5; border-radius: 7px; background: #fff; color: #506157; font-size: 10px; }
@@ -569,7 +577,7 @@
   .sidebar-mobile-close { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 7px; background: #f2f6f3; color: #526a5b; cursor: pointer; }
   .sidebar-mobile-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
   .dashboard-sidebar .sidebar-caption, .dashboard-sidebar .sidebar-bottom { display: none; }
-  .dashboard-shell.sidebar-closed .dashboard-sidebar .dashboard-brand > span:last-child, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-label, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-chevron, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-link small, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-sublink-label, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-user-info { display: none; }
+  .dashboard-shell.sidebar-closed .dashboard-sidebar .dashboard-brand > span:last-child, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-label, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-chevron, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-link small, .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-sublink-label { display: none; }
   .dashboard-shell.sidebar-closed .dashboard-sidebar .dashboard-brand { padding: 0; }
   .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-nav { grid-template-columns: 1fr; justify-items: center; gap: 4px; margin-top: 23px; }
   .dashboard-shell.sidebar-closed .dashboard-sidebar .sidebar-link { width: 50px; min-height: 42px; justify-content: center; gap: 0; padding: 0; white-space: nowrap; }
