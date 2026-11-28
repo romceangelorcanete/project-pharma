@@ -328,3 +328,12 @@ E-STOCK export loading optimization - November 22, 2026
 - Cached decompressed worksheet XML for repeat exports and added a disabled `Preparing...` button state to prevent duplicate exports.
 - `npm run build` completed successfully. Actual download time still depends on the laptop's connection to the Cloudflare tunnel; allow the initial template preload to finish before exporting.
 
+RPCI Donation MHMAP print preview - November 28, 2026
+- Added the MHMAP inventory report table below the Donation table in the RPCI Donation preview so both sections are included when printing that report.
+- Changed the RPCI report title labels to `(Regular)` and `(Donation)`, removing the extra `STOCK` wording.
+
+Stock Card month-to-month history - November 28, 2026
+- Kept saved Stock Card transactions from earlier months visible when viewing a later month, with each month's beginning balance and movements grouped in chronological order.
+- Made each opening-balance date follow the selected month, including January 2027 and later periods.
+- Applied the history behavior independently to Regular, Donation, and MHMAP sample inventory.
+

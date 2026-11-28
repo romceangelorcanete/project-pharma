@@ -24,8 +24,28 @@ const pesoFormatter = new Intl.NumberFormat('en-PH', {
   maximumFractionDigits: 2,
 })
 
+function MonthlyConsumptionSection({ section, search, year }) {
+  const visibleRows = section.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase()))
+  return <section className="monthly-consumption-section" aria-label={`${section.label} monthly consumption`}>
+    <h3>{section.label}</h3>
+    <div className="monthly-consumption-table-scroll" role="region" aria-label={`${section.label} monthly consumption table`} tabIndex="0">
+      <table className="monthly-consumption-table">
+        <thead><tr><th className="monthly-consumption-number">#</th><th className="monthly-consumption-item">ITEMS</th>{monthNames.map((month) => <th key={month}>{month.slice(0, 3).toUpperCase()}</th>)}<th>DPRI<br />HIGHEST</th><th>TOTAL<br />PRICE</th><th>TOTAL<br />CONSUMPTION</th><th>AVERAGE MONTHLY<br />CONSUMPTION</th></tr></thead>
+        <tbody>{visibleRows.map((item) => {
+          const dpri = numericPrice(item.dpri)
+          const monthlyValues = item.monthlyByMonth
+          const totalConsumption = monthlyValues.reduce((total, value) => total + value, 0)
+          const averageConsumption = Math.round(totalConsumption / section.averageMonths)
+          return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{value || ''}</td>)}<td>{dpri ? pesoFormatter.format(dpri) : ''}</td><td>{pesoFormatter.format(totalConsumption * dpri)}</td><td>{totalConsumption}</td><td>{averageConsumption}</td></tr>
+        })}</tbody>
+      </table>
+      {visibleRows.length === 0 && <p className="monthly-consumption-empty">No items match your search.</p>}
+    </div>
+    <footer className="monthly-consumption-footer"><span>{section.label}</span><span>{visibleRows.length} items · {year}</span></footer>
+  </section>
+}
+
 export default function MonthlyConsumption({ stockMonth, onStockMonthChange, preparedBy, preparedByPosition }) {
-  const [activeType, setActiveType] = useState('regular')
   const [search, setSearch] = useState('')
   const [yearPickerOpen, setYearPickerOpen] = useState(false)
   const yearPickerRef = useRef(null)
@@ -45,9 +65,7 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
   const firstYear = Math.min(2026, year)
   const lastYear = Math.max(2100, year)
   const yearOptions = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index)
-  const selectedSection = sections.find((item) => item.id === activeType) || sections[0]
-  const section = useMemo(() => ({ ...selectedSection, rows: sectionRows[selectedSection.id] }), [selectedSection, sectionRows])
-  const visibleRows = useMemo(() => section.rows.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase())), [section.rows, search])
+  const monthlySections = useMemo(() => sections.map((section) => ({ ...section, rows: sectionRows[section.id] })), [sectionRows])
 
   function changeYear(nextYear) {
     onStockMonthChange(`${nextYear}-${String(monthNumber).padStart(2, '0')}`)
@@ -80,9 +98,6 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
         </header>
 
         <div className="monthly-consumption-toolbar">
-          <div className="monthly-consumption-tabs" role="tablist" aria-label="Stock group">
-            {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeType === item.id} className={activeType === item.id ? 'active' : ''} onClick={() => setActiveType(item.id)}>{item.label}</button>)}
-          </div>
           <div className="monthly-consumption-actions">
             <div className="monthly-consumption-year-control" ref={yearPickerRef}>
               <button className="monthly-consumption-year-trigger" type="button" aria-haspopup="listbox" aria-expanded={yearPickerOpen} onClick={() => setYearPickerOpen((open) => !open)}>
@@ -97,21 +112,7 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
             <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} monthlyConsumptionRows={sectionRows} preparedBy={preparedBy} preparedByPosition={preparedByPosition} />
           </div>
         </div>
-
-        <div className="monthly-consumption-table-scroll" role="region" aria-label={`${section.label} monthly consumption table`} tabIndex="0">
-          <table className="monthly-consumption-table">
-            <thead><tr><th className="monthly-consumption-number">#</th><th className="monthly-consumption-item">ITEMS</th>{monthNames.map((month) => <th key={month}>{month.slice(0, 3).toUpperCase()}</th>)}<th>DPRI<br />HIGHEST</th><th>TOTAL<br />PRICE</th><th>TOTAL<br />CONSUMPTION</th><th>AVERAGE MONTHLY<br />CONSUMPTION</th></tr></thead>
-            <tbody>{visibleRows.map((item) => {
-              const dpri = numericPrice(item.dpri)
-              const monthlyValues = item.monthlyByMonth
-              const totalConsumption = monthlyValues.reduce((total, value) => total + value, 0)
-              const averageConsumption = Math.round(totalConsumption / section.averageMonths)
-              return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{value || ''}</td>)}<td>{dpri ? pesoFormatter.format(dpri) : ''}</td><td>{pesoFormatter.format(totalConsumption * dpri)}</td><td>{totalConsumption}</td><td>{averageConsumption}</td></tr>
-            })}</tbody>
-          </table>
-          {visibleRows.length === 0 && <p className="monthly-consumption-empty">No items match your search.</p>}
-        </div>
-        <footer className="monthly-consumption-footer"><span>{section.label}</span><span>{visibleRows.length} items · {year}</span></footer>
+        <div className="monthly-consumption-sections">{monthlySections.map((section) => <MonthlyConsumptionSection key={section.id} section={section} search={search} year={year} />)}</div>
       </section>
     </div>
   )

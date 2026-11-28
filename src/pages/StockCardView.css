@@ -27,7 +27,7 @@
 .stock-card-table tbody input:focus { border-color: #8ab7a1; background: #f4faf6; }
 .stock-card-table tbody input[type=number] { appearance: textfield; -moz-appearance: textfield; }
 .stock-card-table tbody input[type=number]::-webkit-inner-spin-button, .stock-card-table tbody input[type=number]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
-.stock-card-sheet-footer { display: flex; justify-content: space-between; padding: 7px 9px; color: #707a73; font-family: Arial, sans-serif; font-size: 9px; }
+.stock-card-sheet-footer { display: flex; justify-content: flex-end; padding: 7px 9px; color: #707a73; font-family: Arial, sans-serif; font-size: 9px; }
 .stock-card-prepared-by { display: inline-flex; align-items: baseline; gap: 5px; color: #333; }
 .stock-card-prepared-by strong { padding: 0 12px 2px; border-bottom: 1px solid #222; font-weight: 600; }
 .stock-card-prepared-by b { font-weight: 400; text-transform: uppercase; }

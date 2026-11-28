@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import './StockCardView.css'
 
 function toISODate(value = '') {
@@ -18,6 +18,54 @@ function displayDate(value) {
 function isDateInStockMonth(value, stockMonth) {
   const iso = toISODate(value)
   return iso ? iso.slice(0, 7) === stockMonth : false
+}
+
+function getSavedHistory(item, section, stockMonth) {
+  if (typeof window === 'undefined' || !section) return []
+  const prefix = `pharma-sample-inventory:${section}:`
+  const periods = []
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index)
+    if (!key?.startsWith(prefix)) continue
+    const period = key.slice(prefix.length)
+    if (!/^\d{4}-\d{2}$/.test(period) || period >= stockMonth) continue
+    try {
+      const rows = JSON.parse(window.localStorage.getItem(key) || 'null')
+      const savedItem = Array.isArray(rows) && rows.find((row) => String(row.no) === String(item.no) && String(row.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase())
+      if (!savedItem) continue
+      const entries = Array.isArray(savedItem.stockCardEntries) && savedItem.stockCardEntries.length
+        ? savedItem.stockCardEntries.filter((entry) => isDateInStockMonth(entry.date, period))
+        : [
+          ...(savedItem.deliveries || []).filter((delivery) => isDateInStockMonth(delivery.date, period)).map((delivery) => ({ date: toISODate(delivery.date), reference: delivery.vendor || '', receipt: Number(delivery.qty) || 0, issue: 0, office: '', days: '' })),
+          ...Object.entries(savedItem.daily || {}).filter(([day, qty]) => day !== 'return' && Number(qty) > 0).map(([day, qty]) => ({ date: `${period}-${String(day).padStart(2, '0')}`, reference: '', receipt: 0, issue: Number(qty) || 0, office: '', days: '' })),
+        ]
+      periods.push({ period, beginning: Number(savedItem.beginning) || 0, entries: entries.map((entry) => ({ ...entry, date: toISODate(entry.date) })).sort((left, right) => left.date.localeCompare(right.date)) })
+    } catch { /* Ignore malformed saved periods and keep the card usable. */ }
+  }
+  const savedByPeriod = new Map(periods.map((period) => [period.period, period]))
+  const sortedPeriods = [...savedByPeriod.keys()].sort()
+  if (!sortedPeriods.length) return []
+
+  const history = []
+  let cursor = sortedPeriods[0]
+  let carriedBalance = 0
+  while (cursor < stockMonth) {
+    const saved = savedByPeriod.get(cursor)
+    const beginning = saved ? saved.beginning : carriedBalance
+    const entries = saved?.entries || []
+    history.push({ period: cursor, beginning, entries })
+    carriedBalance = entries.reduce((balance, entry) => balance + (Number(entry.receipt) || 0) - (Number(entry.issue) || 0), beginning)
+    const [year, month] = cursor.split('-').map(Number)
+    const next = new Date(year, month, 1)
+    cursor = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
+  }
+  return history
+}
+
+function openingDateForPeriod(period) {
+  const [year, month] = period.split('-').map(Number)
+  const day = Math.min(new Date().getDate(), new Date(year, month, 0).getDate())
+  return `${period}-${String(day).padStart(2, '0')}`
 }
 
 function todayISO(stockMonth, useSelectedMonth = false) {
@@ -60,6 +108,7 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
   })
   const [rows, setRows] = useState(() => savedCardDraft?.rows || getInitialRows(item, stockMonth))
   const [beginningBalance, setBeginningBalance] = useState(() => Number(savedCardDraft?.beginningBalance ?? item.beginning) || 0)
+  const historicalPeriods = useMemo(() => getSavedHistory(item, returnSection, stockMonth), [item, returnSection, stockMonth])
   const [isDirty, setIsDirty] = useState(() => Boolean(savedCardDraft?.isDirty))
   const sheetRows = useMemo(() => rows.reduce((result, row) => {
     const hasTransaction = hasEntry(row)
@@ -143,7 +192,19 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
               <tr><th>Qty.</th><th>Qty.</th><th>Office</th><th>Qty.</th></tr>
             </thead>
             <tbody>
-              <tr className="stock-card-opening-row"><td></td><td>Beginning balance</td><td></td><td></td><td></td><td><input aria-label="Beginning balance" type="number" min="0" value={beginningBalance} onChange={(event) => { setBeginningBalance(Number(event.target.value) || 0); setIsDirty(true) }} /></td><td></td></tr>
+              {historicalPeriods.map(({ period, beginning, entries }) => {
+                let balance = beginning
+                return <Fragment key={period}>
+                  <tr className="stock-card-history-opening-row"><td>{beginning > 0 ? displayDate(openingDateForPeriod(period)) : ''}</td><td>Beginning balance</td><td></td><td></td><td></td><td>{beginning || ''}</td><td></td></tr>
+                  {entries.map((entry, index) => {
+                    const receipt = Number(entry.receipt) || 0
+                    const issue = Number(entry.issue) || 0
+                    if (hasEntry({ ...entry, receipt, issue })) balance += receipt - issue
+                    return <tr className="stock-card-history-row" key={`${period}-${index}`}><td>{displayDate(entry.date)}</td><td>{entry.reference || ''}</td><td>{receipt || ''}</td><td>{issue || ''}</td><td>{entry.office || ''}</td><td>{hasEntry({ ...entry, receipt, issue }) ? balance : ''}</td><td>{entry.days || ''}</td></tr>
+                  })}
+                </Fragment>
+              })}
+              <tr className="stock-card-opening-row"><td>{beginningBalance > 0 ? displayDate(todayISO(stockMonth, useSelectedMonth)) : ''}</td><td>Beginning balance</td><td></td><td></td><td></td><td><input aria-label="Beginning balance" type="number" min="0" value={beginningBalance} onChange={(event) => { setBeginningBalance(Number(event.target.value) || 0); setIsDirty(true) }} /></td><td></td></tr>
               {sheetRows.map((row, index) => <tr key={index}>
                 <td>{displayDate(row.date)}</td>
                 <td><input aria-label={`Row ${index + 1} reference`} value={row.reference ?? ''} onChange={(event) => updateCell(index, 'reference', event.target.value)} /></td>
@@ -156,7 +217,7 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
             </tbody>
           </table>
         </div>
-        <footer className="stock-card-sheet-footer"><span>{item.name}</span><span>{new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span><span className="stock-card-prepared-by">Prepared by: <strong>{preparedBy}</strong>{preparedByPosition && <b>{preparedByPosition}</b>}</span></footer>
+        <footer className="stock-card-sheet-footer"><span className="stock-card-prepared-by">Prepared by: <strong>{preparedBy}</strong>{preparedByPosition && <b>{preparedByPosition}</b>}</span></footer>
       </section>
     </div>
   )

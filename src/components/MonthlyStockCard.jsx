@@ -27,7 +27,7 @@ export default function MonthlyStockCard({ rows, periodLabels, regular = false, 
             const yearClass = expiryYear === currentCalendarYear ? 'expiry-current-year' : expiryYear === currentCalendarYear + 1 ? 'expiry-next-year' : 'expiry-normal-year'
             return <span className={`ledger-expiry-date ${yearClass}`} key={`${expiry}-${index}`}>{expiry}</span>
           }) : item.expiry}</td><td className="ledger-lot">{item.lot}</td><td className="ledger-beginning">{item.beginning}</td>
-          <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry) => <span key={entry.date}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>
+          <td className="ledger-delivery ledger-multiline">{item.deliveries.map((entry, index) => <span key={`${entry.date}-${index}`}>{entry.date}</span>)}</td><td className="ledger-qty ledger-multiline">{item.deliveries.map((entry, index) => <span key={`${entry.date}-${index}`}>{entry.qty}<small>{entry.vendor}</small></span>)}</td>
           {regular && <>{days.slice(0, 3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}{days.slice(3).map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}</>}
           {!regular && days.map((day) => <td className="ledger-day" key={day}>{item.daily[day] || ''}</td>)}
           <td className={`ledger-ending ${item.ending < 0 ? 'ledger-negative' : ''}`}>{item.ending}</td><td className="ledger-month-total">{item.monthly}</td>{item.weekly.map((count, index) => <td className="ledger-week" key={periodLabels[index]}>{count}</td>)}

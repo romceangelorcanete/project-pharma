@@ -25,6 +25,8 @@
 .rpci-table td.rpci-item-name { text-align: left; }
 .rpci-table td.rpci-write-cell { min-width: 70px; }
 .rpci-table td.rpci-remarks { min-width: 90px; font-size: 10px; }
+.rpci-mhmap-section { margin-top: 24px; }
+.rpci-mhmap-section h2 { margin: 0; padding: 8px 10px; border: 1px solid #222; background: #d0d0d0; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 13px; text-align: center; }
 .rpci-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; margin: 48px 36px 0; font-size: 11px; }
 .rpci-signatures > div { display: grid; justify-items: center; }
 .rpci-signatures span { justify-self: start; }

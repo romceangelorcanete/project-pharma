@@ -531,7 +531,7 @@ export default function AdminDashboard({
         </div>
       </aside>
 
-      <section className="dashboard-main" id="overview">
+      <section className={`dashboard-main ${["regular", "donation", "mhmap", "monthly-consumption", "inventory"].includes(activeSection) ? "dashboard-main-inventory" : ""}`} id="overview">
         <header className="dashboard-header dashboard-header--actions-only">
           <div className="dashboard-header-actions">
             <time className="dashboard-live-clock">{liveClockLabel}</time>

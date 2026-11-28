@@ -373,7 +373,7 @@
 .dashboard-brand { gap: 10px; padding: 0 7px; font-size: 13px; letter-spacing: .04em; }
 .dashboard-brand-logo { width: 38px; height: 38px; flex: 0 0 38px; display: block; border: 1px solid #e5ebe6; border-radius: 50%; background: #fff; object-fit: cover; }
 .sidebar-caption { margin: 43px 10px 12px; color: #9aa69f; font-size: 10px; font-weight: 800; letter-spacing: .13em; }
-.sidebar-nav { flex: 1; min-height: 0; display: grid; gap: 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; }
+.sidebar-nav { flex: 1; min-height: 0; display: grid; align-content: start; grid-auto-rows: max-content; gap: 5px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -ms-overflow-style: none; touch-action: pan-y; }
 .sidebar-nav::-webkit-scrollbar { display: none; }
 .sidebar-link { min-height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent; color: #617168; font-size: 13px; font-weight: 550; text-align: left; text-decoration: none; cursor: pointer; }
 .sidebar-link > .sidebar-icon { width: 17px; flex: 0 0 17px; color: #829188; font-size: 17px; text-align: center; }
@@ -397,6 +397,7 @@
 .sidebar-user-info strong { overflow: hidden; color: #34473d; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-user-info span { color: #89958e; font-size: 11px; }
 .dashboard-main { width: min(1440px, 100%); margin: 0 auto; padding: 0 38px 18px; }
+.dashboard-main-inventory { width: 100%; max-width: none; margin: 0; }
 .dashboard-header { min-height: 90px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e6ebe7; }
 .dashboard-header--actions-only { justify-content: flex-end; }
 .dashboard-header .eyebrow { margin-bottom: 5px; font-size: 9px; }
@@ -454,7 +455,7 @@
 .month-picker-grid button.selected-month { border-color: #d5eaf6; background: #eaf6fc; color: #245d7c; font-weight: 750; }
 .ledger-hint { display: none; padding: 8px 22px; border-top: 1px solid #eef1ee; color: #849188; font-size: 10px; }
 .ledger-hint span { margin-right: 5px; color: #4f8965; font-size: 13px; }
-.ledger-scroll { max-height: none; overflow-x: scroll; overflow-y: hidden; border-top: 1px solid #dce5df; overscroll-behavior-x: contain; scrollbar-color: #afc2b4 #f3f6f3; scrollbar-width: auto; touch-action: pan-x pan-y; }
+.ledger-scroll { max-height: none; overflow-x: auto; overflow-y: hidden; border-top: 1px solid #dce5df; overscroll-behavior-x: contain; scrollbar-color: #afc2b4 #f3f6f3; scrollbar-width: auto; touch-action: pan-x pan-y; }
 .ledger-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; color: #425349; font-size: 11px; text-align: center; }
 .ledger-table th, .ledger-table td { height: 43px; padding: 7px 9px; border-right: 1px solid #d5dfd9; border-bottom: 1px solid #d5dfd9; background: #fff; vertical-align: middle; }
 .ledger-table th { position: sticky; top: 0; z-index: 3; height: 54px; background: #dceaf4; color: #31475a; font-size: 10px; font-weight: 800; line-height: 1.25; }
@@ -492,9 +493,10 @@
 .ledger-table .ledger-week { width: 72px; min-width: 72px; background-color: #edf5fa; }
 .ledger-table .ledger-negative { background-color: #df4f4b !important; color: #fff; font-weight: 800; }
 .ledger-table .ledger-multiline { padding: 0 8px; white-space: pre-line; }
-.ledger-multiline span { display: block; padding: 4px 0; }
+.ledger-multiline span { box-sizing: border-box; display: flex; min-height: 34px; align-items: center; justify-content: center; padding: 3px 0; line-height: 1.2; }
 .ledger-multiline span + span { border-top: 1px dashed #dce5df; }
-.ledger-multiline small { display: block; margin-top: 2px; color: #7c8c82; font-size: 9px; }
+.ledger-qty.ledger-multiline span { flex-direction: column; }
+.ledger-multiline small { display: block; margin-top: 1px; color: #7c8c82; font-size: 9px; }
 .estock-other-card { min-height: 140px; }
 .section-pill { padding: 5px 8px; border-radius: 999px; background: #edf6ef; color: #4d7d5e; font-size: 9px; font-weight: 700; }
 .section-preview { margin: 20px 0 0; color: #929c96; font-size: 11px; }
