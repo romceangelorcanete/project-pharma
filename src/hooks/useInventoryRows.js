@@ -199,11 +199,11 @@ function mergeInventoryMonth(section, previousRows, currentRows, period) {
   previousRows.forEach((previous) => {
     if (!findPreviousItem(previous, currentRows)) rows.push(...carryForward([previous]))
   })
-  const weeklyRanges = section === 'regular' ? ['1-7', '8-14', '15-21', '22-28', '29-30'] : ['1-3', '4-10', '11-17', '18-24', '25-30']
+  const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-31']
   return rows.map((item) => {
     const previous = findPreviousItem(item, previousRows)
     const normalized = inventoryMonthItem(section, item, period, previous)
-    const totals = calculateInventoryTotals(normalized, weeklyRanges)
+    const totals = calculateInventoryTotals(normalized, weeklyRanges, new Date(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0).getDate())
     return { ...normalized, ending: totals.ending, monthly: totals.monthly, weekly: totals.weekly }
   })
 }
@@ -217,10 +217,10 @@ function rowsForPeriod(section, fallbackRows, period) {
     const exactBase = readStored(periodKey(section, basePeriod))
     const baseRows = exactBase || readStored(`${storagePrefix}${section}`) || fallbackRows
     if (exactBase) {
-      const weeklyRanges = section === 'regular' ? ['1-7', '8-14', '15-21', '22-28', '29-30'] : ['1-3', '4-10', '11-17', '18-24', '25-30']
+      const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-31']
       rows = baseRows.map((item) => {
         const normalized = inventoryMonthItem(section, item, basePeriod)
-        const totals = calculateInventoryTotals(normalized, weeklyRanges)
+        const totals = calculateInventoryTotals(normalized, weeklyRanges, new Date(Number(basePeriod.slice(0, 4)), Number(basePeriod.slice(5, 7)), 0).getDate())
         return { ...normalized, ending: totals.ending, monthly: totals.monthly, weekly: totals.weekly }
       })
     } else {

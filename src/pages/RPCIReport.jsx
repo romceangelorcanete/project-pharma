@@ -19,15 +19,27 @@ function deliveryQuantities(item) {
   return (item.deliveries || []).map((delivery) => [delivery.qty, delivery.vendor].filter(Boolean).join(' ')).filter(Boolean).join('\n')
 }
 
+function formatRpcPosition(value) {
+  return String(value ?? '')
+    .toLocaleLowerCase()
+    .replace(/\b[a-z]/g, (letter) => letter.toLocaleUpperCase())
+    .replace(/\bOic\b/g, 'OIC')
+    .replace(/\b(?:i{1,3}|iv|v|vi{0,3}|ix|x)\b/gi, (numeral) => numeral.toLocaleUpperCase())
+}
+
 function RpciTable({ rows }) {
   return <table className="rpci-table">
+    <colgroup><col style={{ width: '5%' }} /><col style={{ width: '23%' }} /><col style={{ width: '7%' }} /><col style={{ width: '7%' }} /><col style={{ width: '7%' }} /><col style={{ width: '7%' }} /><col style={{ width: '7%' }} /><col style={{ width: '7%' }} /><col style={{ width: '7%' }} /><col style={{ width: '10%' }} /><col style={{ width: '13%' }} /></colgroup>
     <thead>
       <tr><th rowSpan="2">Article</th><th rowSpan="2" className="rpci-description">Description</th><th rowSpan="2">Stock<br />Number</th><th rowSpan="2">Unit of<br />Measure</th><th rowSpan="2">Unit<br />Value</th><th>Balance Per Card</th><th>On Hand Per<br />Count</th><th colSpan="2">Shortage/Overage</th><th colSpan="2">Remarks</th></tr>
       <tr><th>(Quantity)</th><th>(Quantity)</th><th>Quantity</th><th>Value</th><th>Delivery Date</th><th>Quantity<br />Delivered</th></tr>
     </thead>
-    <tbody>{rows.map((item, index) => <tr key={`${item.no}-${item.name}`}>
-      <td>{index + 1}</td><td className="rpci-item-name">{item.name}</td><td>{item.stockNumber || ''}</td><td>{item.unit || ''}</td><td>{amount(item.price)}</td><td>{Number(item.ending ?? item.beginning) || 0}</td><td className="rpci-write-cell"></td><td className="rpci-write-cell"></td><td className="rpci-write-cell"></td><td className="rpci-remarks">{deliveryDates(item)}</td><td className="rpci-remarks">{deliveryQuantities(item)}</td>
-    </tr>)}</tbody>
+    <tbody>{rows.map((item, index) => {
+      const balance = Number(item.ending ?? item.beginning) || 0
+      return <tr key={`${item.no}-${item.name}`}>
+        <td>{index + 1}</td><td className="rpci-item-name">{item.name}</td><td>{item.stockNumber || ''}</td><td>{item.unit || ''}</td><td>{amount(item.price)}</td><td>{balance}</td><td>{balance}</td><td className="rpci-write-cell"></td><td className="rpci-write-cell"></td><td className="rpci-remarks">{deliveryDates(item)}</td><td className="rpci-remarks">{deliveryQuantities(item)}</td>
+      </tr>
+    })}</tbody>
   </table>
 }
 
@@ -38,9 +50,9 @@ export default function RPCIReport({ reportType, stockMonth, onStockMonthChange,
   const [rows] = useInventoryRows(section, fallbackRows, stockMonth)
   const [mhmapRows] = useInventoryRows('mhmap', sampleMhmapRows, stockMonth)
   const [preparedBy, setPreparedBy] = useState(accountName)
-  const [preparedByPosition, setPreparedByPosition] = useState(accountPosition)
+  const [preparedByPosition, setPreparedByPosition] = useState(() => formatRpcPosition(accountPosition))
   const [notedBy, setNotedBy] = useState('Jeremie V. Villanueva-San Juan, RPh')
-  const [notedByPosition, setNotedByPosition] = useState('PHARMACIST III')
+  const [notedByPosition, setNotedByPosition] = useState('Pharmacist III')
   const [year, month] = stockMonth.split('-').map(Number)
   const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const stockLabel = isDonation ? 'Donation' : 'Regular'
@@ -51,7 +63,7 @@ export default function RPCIReport({ reportType, stockMonth, onStockMonthChange,
       <article className="rpci-sheet">
         <div className="rpci-appendix">Appendix 66</div>
         <h1>REPORT ON THE PHYSICAL COUNT OF INVENTORIES</h1>
-        <h2>({stockLabel})</h2>
+        <h2 className="rpci-stock-label">({stockLabel})</h2>
         <p className="rpci-as-of">As of {monthLabel}</p>
         <div className="rpci-fund">Fund Cluster: <span /></div>
         <p className="rpci-accountability">For which <span />, <span />, <span /> is accountable, having assumed such accountability on <span />.</p>
@@ -60,7 +72,7 @@ export default function RPCIReport({ reportType, stockMonth, onStockMonthChange,
           <h2>MENTAL HEALTH MEDICINES ACCESS PROGRAM (MHMAP)</h2>
           <div className="rpci-table-wrap"><RpciTable rows={mhmapRows} /></div>
         </section>}
-        <div className="rpci-signatures"><div><span>Prepared by:</span><input className="rpci-signature-input rpci-signature-name" aria-label="Prepared by name" placeholder="Name, RPh" value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} /><input className="rpci-signature-input" aria-label="Prepared by position" value={preparedByPosition} onChange={(event) => setPreparedByPosition(event.target.value)} /></div><div><span>Noted by:</span><input className="rpci-signature-input rpci-signature-name" aria-label="Noted by name" value={notedBy} onChange={(event) => setNotedBy(event.target.value)} /><input className="rpci-signature-input" aria-label="Noted by position" value={notedByPosition} onChange={(event) => setNotedByPosition(event.target.value)} /></div></div>
+        <div className="rpci-signatures"><div><span>Prepared by:</span><input className="rpci-signature-input rpci-signature-name" aria-label="Prepared by name" placeholder="Name, RPh" value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} /><input className="rpci-signature-input" aria-label="Prepared by position" value={preparedByPosition} onChange={(event) => setPreparedByPosition(formatRpcPosition(event.target.value))} /></div><div><span>Noted by:</span><input className="rpci-signature-input rpci-signature-name" aria-label="Noted by name" value={notedBy} onChange={(event) => setNotedBy(event.target.value)} /><input className="rpci-signature-input" aria-label="Noted by position" value={notedByPosition} onChange={(event) => setNotedByPosition(formatRpcPosition(event.target.value))} /></div></div>
       </article>
     </section>
   </div>

@@ -12,6 +12,14 @@ function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0
 }
 
+function formatRpcPosition(value) {
+  return String(value ?? '')
+    .toLocaleLowerCase()
+    .replace(/\b[a-z]/g, (letter) => letter.toLocaleUpperCase())
+    .replace(/\bOic\b/g, 'OIC')
+    .replace(/\b(?:i{1,3}|iv|v|vi{0,3}|ix|x)\b/gi, (numeral) => numeral.toLocaleUpperCase())
+}
+
 function findEndOfCentralDirectory(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   for (let offset = bytes.length - 22; offset >= Math.max(0, bytes.length - 65557); offset -= 1) {
@@ -259,6 +267,46 @@ function hideInventoryHelperColumns(xml) {
   return xml.replace(/(<dimension\b[^>]*\bref="[A-Z]+\d+:)[A-Z]+(\d+"[^>]*\/>)/, '$1BI$2')
 }
 
+function hideOutOfMonthDayColumns(xml, firstDayColumn, daysInMonth) {
+  const hiddenStart = firstDayColumn + daysInMonth
+  const hiddenEnd = firstDayColumn + 30
+  if (hiddenStart > hiddenEnd) return xml
+  return xml.replace(/<cols\b[^>]*>[\s\S]*?<\/cols>/, (colsXml) => {
+    const parts = []
+    colsXml.replace(/<col\b[^>]*\/>/g, (columnXml) => {
+      const min = Number(columnXml.match(/\bmin="(\d+)"/)?.[1])
+      const max = Number(columnXml.match(/\bmax="(\d+)"/)?.[1])
+      if (!min || !max || max < hiddenStart || min > hiddenEnd) {
+        parts.push(columnXml)
+        return columnXml
+      }
+      const attributes = columnXml.match(/^<col\b([^>]*)\/>$/)?.[1] || ''
+      const segment = (start, end, hidden = false) => {
+        if (start > end) return
+        let next = attributes
+          .replace(/\s+min="\d+"/, '')
+          .replace(/\s+max="\d+"/, '')
+          .replace(/\s+hidden="[^"]*"/, '')
+          .replace(/\s+width="[^"]*"/, '')
+          .replace(/\s+customWidth="[^"]*"/, '')
+        next += ` min="${start}" max="${end}"`
+        if (hidden) next += ' width="0" hidden="1" customWidth="1"'
+        else {
+          const width = attributes.match(/\s+width="[^"]*"/)?.[0] || ''
+          const customWidth = attributes.match(/\s+customWidth="[^"]*"/)?.[0] || ''
+          next += `${width}${customWidth}`
+        }
+        parts.push(`<col${next}/>`)
+      }
+      segment(min, Math.min(max, hiddenStart - 1))
+      segment(Math.max(min, hiddenStart), Math.min(max, hiddenEnd), true)
+      segment(Math.max(min, hiddenEnd + 1), max)
+      return columnXml
+    })
+    return `<cols>${parts.join('')}</cols>`
+  })
+}
+
 function syncRegularEndingBalanceFormula(xml, rows) {
   const sharedRanges = []
   const cellPattern = /<c\b[^>]*\br="AR\d+"[^>]*>[\s\S]*?<f\b[^>]*>[\s\S]*?<\/f>[\s\S]*?<\/c>/g
@@ -408,7 +456,7 @@ function rpciCellValues(item) {
     E: item?.unit || '',
     F: price,
     G: item ? Number(item.ending ?? item.beginning) || 0 : '',
-    H: '',
+    H: item ? Number(item.ending ?? item.beginning) || 0 : '',
     I: '',
     J: '',
     K: deliveryDates(deliveries),
@@ -449,7 +497,7 @@ function excelColumn(index) {
   return label
 }
 
-function regularCellValues(item, rowNumber) {
+function regularCellValues(item, rowNumber, daysInMonth = 31) {
   const values = {
     A: item.no,
     B: item.name,
@@ -465,12 +513,12 @@ function regularCellValues(item, rowNumber) {
     L: deliveryQuantities(item.deliveries, '\n'),
   }
   for (let day = 1; day <= 31; day += 1) {
-    values[excelColumn(day + 12)] = item.daily?.[day] ?? ''
+    values[excelColumn(day + 12)] = day <= daysInMonth ? item.daily?.[day] ?? '' : ''
   }
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
 }
 
-function stockCellValues(item, rowNumber) {
+function stockCellValues(item, rowNumber, daysInMonth = 31) {
   const values = {
     A: item.no,
     B: item.name,
@@ -482,7 +530,7 @@ function stockCellValues(item, rowNumber) {
     AM: item.ending,
     AN: item.monthly,
   }
-  for (let day = 1; day <= 31; day += 1) values[excelColumn(day + 7)] = item.daily?.[day] ?? ''
+  for (let day = 1; day <= 31; day += 1) values[excelColumn(day + 7)] = day <= daysInMonth ? item.daily?.[day] ?? '' : ''
   ;(item.weekly || []).slice(0, 5).forEach((qty, index) => { values[excelColumn(41 + index)] = qty })
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
 }
@@ -569,6 +617,8 @@ async function writeZip(entries) {
 }
 
 export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], monthlyConsumptionRows, preparedBy = '', preparedByPosition = '', stockMonth = '2026-11', consumptionYear = 2026 } = {}) {
+  const [stockYear, stockMonthNumber] = stockMonth.split('-').map(Number)
+  const daysInMonth = new Date(stockYear, stockMonthNumber, 0).getDate()
   const entries = await getTemplateEntries()
   const calcChainIndex = entries.findIndex((candidate) => candidate.name === 'xl/calcChain.xml')
   if (calcChainIndex >= 0) entries.splice(calcChainIndex, 1)
@@ -594,19 +644,21 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     workbookEntry.updatedText = workbookXml
   }
   const sheets = [
-    { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: regularCellValues, monthTitleCell: 'M1', dataStartRow: 3, inventoryHelperRows: regularRows, regularEndingRows: regularRows },
-    { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3, inventoryHelperRows: donationRows },
-    { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: stockCellValues, monthTitleCell: 'H1', dataStartRow: 3, inventoryHelperRows: mhmapRows },
+    { file: 'xl/worksheets/sheet1.xml', rows: regularRows, map: (item, row) => regularCellValues(item, row, daysInMonth), monthTitleCell: 'M1', dayHeaderStartColumn: 13, weeklyHeaderStartColumn: 46, dataStartRow: 3, inventoryHelperRows: regularRows, regularEndingRows: regularRows },
+    { file: 'xl/worksheets/sheet2.xml', rows: donationRows, map: (item, row) => stockCellValues(item, row, daysInMonth), monthTitleCell: 'H1', dayHeaderStartColumn: 8, weeklyHeaderStartColumn: 41, dataStartRow: 3, inventoryHelperRows: donationRows },
+    { file: 'xl/worksheets/sheet3.xml', rows: mhmapRows, map: (item, row) => stockCellValues(item, row, daysInMonth), monthTitleCell: 'H1', dayHeaderStartColumn: 8, weeklyHeaderStartColumn: 41, dataStartRow: 3, inventoryHelperRows: mhmapRows },
     {
       file: 'xl/worksheets/sheet5.xml',
       reportGroups: inventoryReportGroups(regularRows, donationRows, mhmapRows),
+      reportWeekHeaderRows: [3, 477, 573],
       clearReferenceErrors: true,
       reportTitleCell: 'A1',
       preparedByCell: 'B597',
       preparedByPositionCell: 'B598',
+      uppercasePreparedBy: true,
       sectionTitles: [{ cell: 'A476', value: 'DONATION' }],
     },
-    { file: 'xl/worksheets/sheet6.xml', rpciGroups: [{ startRow: 15, endRow: 486, rows: regularRows }], preparedByCell: 'C491', preparedByPositionCell: 'C492' },
+    { file: 'xl/worksheets/sheet6.xml', rpciGroups: [{ startRow: 15, endRow: 486, rows: regularRows }], preparedByCell: 'C491', preparedByPositionCell: 'C492', rpcIPositionTitleCase: true },
     {
       file: 'xl/worksheets/sheet7.xml',
       rpciGroups: [
@@ -615,6 +667,7 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       ],
       preparedByCell: 'C134',
       preparedByPositionCell: 'C135',
+      rpcIPositionTitleCase: true,
     },
     {
       file: 'xl/worksheets/sheet4.xml',
@@ -661,9 +714,19 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
       xml = applyCellUpdates(xml, updates, true)
     }
     if (sheet.monthTitleCell) {
-      const [year, month] = stockMonth.split('-').map(Number)
-      const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+      const monthLabel = new Date(stockYear, stockMonthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
       xml = setCell(xml, sheet.monthTitleCell, `*${monthLabel}`)
+      if (sheet.dayHeaderStartColumn) {
+        for (let day = 1; day <= 31; day += 1) {
+          xml = setCell(xml, `${excelColumn(sheet.dayHeaderStartColumn + day - 1)}2`, day <= daysInMonth ? day : '')
+        }
+        xml = hideOutOfMonthDayColumns(xml, sheet.dayHeaderStartColumn, daysInMonth)
+      }
+      if (sheet.weeklyHeaderStartColumn) {
+        ;['1-7', '8-14', '15-21', '22-28', '29-31'].forEach((label, index) => {
+          xml = setCell(xml, `${excelColumn(sheet.weeklyHeaderStartColumn + index)}2`, label)
+        })
+      }
     }
     if (sheet.reportTitleCell) {
       const [year, month] = stockMonth.split('-').map(Number)
@@ -674,8 +737,16 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     sheet.sectionTitles?.forEach(({ cell, value }) => {
       xml = setCell(xml, cell, value)
     })
-    if (sheet.preparedByCell) xml = setCell(xml, sheet.preparedByCell, preparedBy)
-    if (sheet.preparedByPositionCell) xml = setCell(xml, sheet.preparedByPositionCell, preparedByPosition)
+    sheet.reportWeekHeaderRows?.forEach((row) => {
+      const labels = ['1st week 1-7', '2nd week 8-14', '3rd week 15-21', '4th week 22-28', '5th week 29-31']
+      labels.forEach((label, index) => { xml = setCell(xml, `${excelColumn(index + 10)}${row}`, label) })
+    })
+    const sheetPreparedBy = sheet.uppercasePreparedBy ? preparedBy.toLocaleUpperCase() : preparedBy
+    const sheetPreparedByPosition = sheet.uppercasePreparedBy
+      ? preparedByPosition.toLocaleUpperCase()
+      : sheet.rpcIPositionTitleCase ? formatRpcPosition(preparedByPosition) : preparedByPosition
+    if (sheet.preparedByCell) xml = setCell(xml, sheet.preparedByCell, sheetPreparedBy)
+    if (sheet.preparedByPositionCell) xml = setCell(xml, sheet.preparedByPositionCell, sheetPreparedByPosition)
     const groups = sheet.groups || (sheet.rows ? [{ rows: sheet.rows, startRow: sheet.startRow || 3 }] : [])
     const cellUpdates = new Map()
     groups.forEach((group) => {

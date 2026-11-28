@@ -14,7 +14,7 @@ export const sampleRegularRows = [
 ]
 
 
-const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-30']
+const weeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-31']
 const otherCategoryOptions = ['MOBCHA', 'YAKAP', 'OR', 'HIGH ALERT', 'NONE']
 const todayDateInput = () => { const today = new Date(); return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}` }
 const blankDelivery = () => ({ date: todayDateInput(), qty: '', vendor: '' })
@@ -53,6 +53,7 @@ function regularProductKey(item) {
 }
 
 export default function RegularInventory({ stockMonth, onStockMonthChange, onOpenStockCard, registerStockCardReturnUpdater, preparedBy, preparedByPosition }) {
+  const daysInMonth = new Date(Number(stockMonth.slice(0, 4)), Number(stockMonth.slice(5, 7)), 0).getDate()
   const [rows, setRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const draftStorageKey = `pharma-inventory-form-draft:regular:${stockMonth}`
   const [savedFormDraft] = useState(() => {
@@ -66,7 +67,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
   const [editingItemNo, setEditingItemNo] = useState(() => savedFormDraft?.editingNo ?? null)
   const [itemForm, setItemForm] = useState(() => savedFormDraft?.itemForm || blankItemForm())
   const [dropdownOptions] = useState(getRegularDropdownOptions)
-  const calculatedTotals = calculateInventoryTotals(itemForm, weeklyRanges)
+  const calculatedTotals = calculateInventoryTotals(itemForm, weeklyRanges, daysInMonth)
   useEffect(() => {
     try {
       if (addItemOpen) window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ open: true, editingNo: editingItemNo, itemForm }))
@@ -80,7 +81,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
       const formDeliveries = updated.deliveries.map((delivery) => ({ date: toDateInput(delivery.date), qty: Number(delivery.qty) || 0, vendor: delivery.vendor || '' }))
       const deliveries = formDeliveries.map((delivery) => ({ ...delivery, date: toStockCardDate(delivery.date) }))
       const daily = Object.fromEntries(Object.entries(updated.daily || {}).map(([day, qty]) => [day, Number(qty) || 0]))
-      const totals = calculateInventoryTotals({ ...itemForm, beginning, deliveries: formDeliveries, daily }, weeklyRanges)
+      const totals = calculateInventoryTotals({ ...itemForm, beginning, deliveries: formDeliveries, daily }, weeklyRanges, daysInMonth)
       const savedItem = {
         no: editingItemNo ?? Math.max(0, ...rows.map((row) => Number(row.no) || 0)) + 1,
         name: itemForm.name.trim(), unit: itemForm.unit.trim(),
@@ -103,7 +104,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     }
     registerStockCardReturnUpdater(updateDraft)
     return () => registerStockCardReturnUpdater(null)
-  }, [registerStockCardReturnUpdater, itemForm, editingItemNo, rows, stockMonth, weeklyRanges])
+  }, [registerStockCardReturnUpdater, itemForm, editingItemNo, rows, stockMonth, weeklyRanges, daysInMonth])
   const [year, monthNumber] = stockMonth.split('-').map(Number)
   const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const visibleRows = rows
@@ -189,7 +190,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
     const deliveries = itemForm.deliveries
       .filter((delivery) => (delivery.qty !== '' && delivery.qty != null) || delivery.vendor.trim())
       .map((delivery) => ({ date: toStockCardDate(delivery.date), qty: Number(delivery.qty) || 0, vendor: delivery.vendor.trim() }))
-    const calculatedTotals = calculateInventoryTotals({ ...itemForm, beginning, deliveries }, weeklyRanges)
+    const calculatedTotals = calculateInventoryTotals({ ...itemForm, beginning, deliveries }, weeklyRanges, daysInMonth)
     const newItem = {
       no: editingItemNo ?? Math.max(0, ...rows.map((item) => Number(item.no) || 0)) + 1,
       name: itemForm.name.trim(),
@@ -249,7 +250,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
         </div>
         <div className="ledger-hint"><span>↔</span> Swipe or scroll horizontally to view all stock-card columns</div>
         {visibleRows.length === 0 && <p className="regular-empty-results">No items match your search or filters.</p>}
-        <MonthlyStockCard rows={visibleRows} periodLabels={weeklyRanges} regular monthLabel={monthLabel} onItemClick={beginEditItem} />
+        <MonthlyStockCard rows={visibleRows} periodLabels={weeklyRanges} stockMonth={stockMonth} regular monthLabel={monthLabel} onItemClick={beginEditItem} />
       </section>
       {addItemOpen && <div className="regular-item-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddItemOpen(false) }}>
         <section className="regular-item-modal" role="dialog" aria-modal="true" aria-labelledby="regular-add-item-title">
@@ -267,7 +268,7 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
             <fieldset className="regular-deliveries-fieldset"><legend>Deliveries</legend>{itemForm.deliveries.map((delivery, index) => <div className="regular-delivery-fields" key={index}><label>Delivery date<input type="date" value={delivery.date} onChange={(event) => updateDelivery(index, 'date', event.target.value)} /></label><label>Qty delivered<input type="number" min="0" step="1" value={delivery.qty} onChange={(event) => updateDelivery(index, 'qty', event.target.value)} placeholder="0" /></label><label>Supplier<input value={delivery.vendor} onChange={(event) => updateDelivery(index, 'vendor', event.target.value)} placeholder="Supplier name" /></label>{itemForm.deliveries.length > 1 && <button type="button" className="regular-remove-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: current.deliveries.filter((_, rowIndex) => rowIndex !== index) }))}>Remove</button>}</div>)}<button type="button" className="regular-add-delivery" onClick={() => setItemForm((current) => ({ ...current, deliveries: [...current.deliveries, { ...blankDelivery(), date: todayDateInput() }] }))}>+ Add delivery</button></fieldset>
             <label>Ending balance<input type="number" value={calculatedTotals.ending} readOnly /></label>
             <label>Monthly consumption<input type="number" value={calculatedTotals.monthly} readOnly /></label>
-            <fieldset className="regular-daily-fieldset"><legend>Daily consumption · days 1–31</legend><div className="regular-daily-grid">{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <label key={day}><span>{day}</span><input aria-label={`Day ${day} consumption`} type="number" min="0" step="1" value={itemForm.daily[day] ?? ''} onChange={(event) => updateDaily(day, event.target.value)} /></label>)}</div></fieldset>
+            <fieldset className="regular-daily-fieldset"><legend>Daily consumption · days 1–{daysInMonth}</legend><div className="regular-daily-grid">{Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => <label key={day}><span>{day}</span><input aria-label={`Day ${day} consumption`} type="number" min="0" step="1" value={itemForm.daily[day] ?? ''} onChange={(event) => updateDaily(day, event.target.value)} /></label>)}</div></fieldset>
             <fieldset className="regular-weekly-fieldset"><legend>Weekly consumption</legend><div>{weeklyRanges.map((range, index) => <label key={range}>{range}<input type="number" value={calculatedTotals.weekly[index]} readOnly /></label>)}</div></fieldset>
             <div className="regular-item-form-actions"><button type="button" className="regular-stockcards-button" onClick={() => { const saved = rows.find((item) => item.no === editingItemNo) || rows[0] || {}; const deliveries = itemForm.deliveries.filter((delivery) => (delivery.qty !== '' && delivery.qty != null) || delivery.vendor.trim()).map((delivery) => ({ date: delivery.date, qty: Number(delivery.qty) || 0, vendor: delivery.vendor.trim() })); const daily = Object.fromEntries(Object.entries(itemForm.daily).map(([day, amount]) => [day, Number(amount) || 0])); const selected = { ...saved, no: editingItemNo ?? saved.no, name: itemForm.name, unit: itemForm.unit, category: itemForm.category, other: itemForm.other, beginning: Number(itemForm.beginning) || 0, deliveries, daily, stockCardEntries: reconcileStockCardEntries({ ...itemForm, deliveries, daily }, stockMonth), ending: calculatedTotals.ending, monthly: calculatedTotals.monthly, weekly: calculatedTotals.weekly }; const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: toDateInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries })); onOpenStockCard?.(selected, stockMonth, 'regular', updateDraft) }}>Stock Cards</button>{editingItemNo !== null && <button type="button" className="regular-remove-delivery regular-delete-item-button" onClick={deleteSampleItem}>Delete item</button>}<button type="button" className="regular-item-cancel" onClick={() => { setAddItemOpen(false); setEditingItemNo(null) }}>Cancel</button><button type="submit" className="regular-add-item-button">{editingItemNo === null ? 'Add sample item' : 'Save sample changes'}</button></div>
           </form>

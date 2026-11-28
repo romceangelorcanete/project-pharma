@@ -337,3 +337,27 @@ Stock Card month-to-month history - November 28, 2026
 - Made each opening-balance date follow the selected month, including January 2027 and later periods.
 - Applied the history behavior independently to Regular, Donation, and MHMAP sample inventory.
 
+RPCI on-hand count and Excel export - November 28, 2026
+- Matched the RPCI `On Hand Per Count` quantity to the item's `Balance Per Card` in the on-screen report.
+- Updated the RPCI Excel template export to populate both quantity columns with the same ending balance.
+
+RPCI report print layout - November 28, 2026
+- Matched the RPCI stock label area to the spreadsheet reference with a centered divider above the selected stock type.
+- Set explicit physical-count table column widths to improve header and value readability in print for Regular and Donation/MHMAP.
+- Narrowed and centered the print sheet, tightened header spacing, and lengthened the accountability blanks to better match the supplied print reference.
+- Set the print stock-label top margin to 25px and lengthened/centered the print-only divider to match the preview.
+
+RPCI signature position casing - November 28, 2026
+- Kept RPCI Prepared by and Noted by position titles in title case (for example, `Pharmacist III`) even when the account position is stored in uppercase.
+
+RPCI and Inventory Report export signatures - November 28, 2026
+- Uppercased the Prepared by name and position in the Inventory Report Excel export.
+- Kept RPCI Regular and Donation Prepared by name and position connected to the signed-in database account, formatting the position in title case (for example, `Pharmacist IV`).
+
+
+Inventory weekly ranges through day 31 - November 28, 2026
+- Unified the weekly consumption ranges for Regular, Donation, and MHMAP as `1-7`, `8-14`, `15-21`, `22-28`, and `29-31`.
+- Updated Inventory Report week headings to use the same ranges in all three sections.
+- Made daily consumption inputs, monthly inventory day columns, monthly totals, and weekly totals respect the selected month's actual number of days (for example, 30 days in November and 28 in non-leap February).
+- Updated the E-STOCK Excel export for Regular, Donation, MHMAP, and Inventory Report with the same weekly headings; out-of-month day columns are blanked and hidden based on the selected month.
+

@@ -34,7 +34,7 @@ export const sampleMhmapRows = [
   { no: 20, name: 'Valproic acid 250mg/5ml syrup, 120ml bottle', expiry: '', lot: '', beginning: 0, deliveries: [], daily: {}, ending: 0, monthly: 0, weekly: [0, 0, 0, 0, 0] },
 ] .map((item) => ({ ...item, unit: inferUnit(item.name) }))
 
-const mhmapWeeklyRanges = ['1-3', '4-10', '11-17', '18-24', '25-30']
+const mhmapWeeklyRanges = ['1-7', '8-14', '15-21', '22-28', '29-31']
 
 export default function MhmapInventory({ stockMonth, onStockMonthChange, monthLabel, onOpenStockCard, registerStockCardReturnUpdater, preparedBy, preparedByPosition }) {
   return <DonationInventory stockMonth={stockMonth} onStockMonthChange={onStockMonthChange} monthLabel={monthLabel} onOpenStockCard={onOpenStockCard} registerStockCardReturnUpdater={registerStockCardReturnUpdater} preparedBy={preparedBy} preparedByPosition={preparedByPosition} inventoryType="mhmap" initialRows={sampleMhmapRows} weeklyRanges={mhmapWeeklyRanges} />

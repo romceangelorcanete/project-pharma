@@ -12,7 +12,11 @@ const groupLabels = [
   { id: 'donation', title: 'Donation' },
   { id: 'mhmap', title: 'Mental Health Medicines Access Program (MHMAP)' },
 ]
-const weeklyLabels = ['1st week|1-2', '2nd week|3-8', '3rd week|9-15', '4th week|16-22', '5th week|23-30']
+const weeklyLabels = {
+  regular: ['1st week|1-7', '2nd week|8-14', '3rd week|15-21', '4th week|22-28', '5th week|29–31'],
+  donation: ['1st week|1-7', '2nd week|8-14', '3rd week|15-21', '4th week|22-28', '5th week|29–31'],
+  mhmap: ['1st week|1-7', '2nd week|8-14', '3rd week|15-21', '4th week|22-28', '5th week|29–31'],
+}
 
 function statusFor(item) {
   const balance = Number(item.ending ?? item.beginning ?? 0)
@@ -33,13 +37,14 @@ function deliveryLines(item, field) {
 
 function ReportSection({ group, search }) {
   const rows = group.rows.filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+  const sectionWeeklyLabels = weeklyLabels[group.id] || weeklyLabels.regular
   return (
     <section className="inventory-report-section" aria-label={group.title}>
       <h3>{group.title}</h3>
       <div className="inventory-report-table-scroll" role="region" aria-label={`${group.title} inventory report table`} tabIndex="0">
         <table className="inventory-report-table">
           <thead>
-            <tr><th className="ir-number">#</th><th className="ir-item">ITEM</th><th>EXPIRATION<br />DATE</th><th>LOT<br />NUMBER</th><th>DELIVERY<br />DATE</th><th>QTY<br />DELIVERED</th><th>BEGINNING<br />BALANCE</th><th>ENDING<br />BALANCE</th><th>MONTHLY<br />CONSUMPTION</th>{weeklyLabels.map((label) => <th key={label}>{label.split('|')[0]}<br />{label.split('|')[1]}</th>)}<th>STATUS</th><th>REMARKS</th></tr>
+            <tr><th className="ir-number">#</th><th className="ir-item">ITEM</th><th>EXPIRATION<br />DATE</th><th>LOT<br />NUMBER</th><th>DELIVERY<br />DATE</th><th>QTY<br />DELIVERED</th><th>BEGINNING<br />BALANCE</th><th>ENDING<br />BALANCE</th><th>MONTHLY<br />CONSUMPTION</th>{sectionWeeklyLabels.map((label) => <th key={label}>{label.split('|')[0]}<br />{label.split('|')[1]}</th>)}<th>STATUS</th><th>REMARKS</th></tr>
           </thead>
           <tbody>{rows.length ? rows.map((item) => {
             const status = statusFor(item)
