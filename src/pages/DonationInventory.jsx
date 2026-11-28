@@ -3,7 +3,7 @@ import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
 import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { getRegularDropdownOptions } from './regularDropdownOptions.js'
-import useInventoryRows from '../hooks/useInventoryRows.js'
+import useInventoryRows, { deleteInventoryItem, persistInventoryRows } from '../hooks/useInventoryRows.js'
 import { calculateInventoryTotals } from '../utils/inventoryCalculations.js'
 import { reconcileStockCardEntries } from '../utils/stockCardEntries.js'
 import './RegularInventory.css'
@@ -69,10 +69,32 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
   }, [draftStorageKey, itemFormOpen, editingNo, itemForm])
   useEffect(() => {
     if (!registerStockCardReturnUpdater) return undefined
-    const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: dateToInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries }))
+    const updateDraft = (updated) => {
+      const beginning = Number(updated.beginning) || 0
+      const formDeliveries = updated.deliveries.map((delivery) => ({ date: dateToInput(delivery.date), qty: Number(delivery.qty) || 0, vendor: delivery.vendor || '' }))
+      const deliveries = formDeliveries.map((delivery) => ({ ...delivery, date: dateToStockValue(delivery.date) }))
+      const daily = Object.fromEntries(Object.entries(updated.daily || {}).map(([day, qty]) => [day, Number(qty) || 0]))
+      const totals = calculateInventoryTotals({ ...itemForm, beginning, deliveries: formDeliveries, daily }, weeklyRanges)
+      const savedItem = {
+        no: editingNo ?? Math.max(0, ...rows.map((row) => Number(row.no) || 0)) + 1,
+        name: itemForm.name.trim(), unit: itemForm.unit,
+        expiry: itemForm.expiryDates.map((date) => expiryToStock(date)).filter(Boolean).join('\n'),
+        lot: itemForm.lotNumbers.map((lot) => lot.trim()).filter(Boolean).join('\n'),
+        beginning, deliveries, daily, stockCardEntries: updated.stockCardEntries,
+        ending: totals.ending, monthly: totals.monthly, weekly: totals.weekly,
+      }
+      if (savedItem.name && editingNo !== null) {
+        const nextRows = editingNo === null ? [...rows, savedItem] : rows.map((row) => row.no === editingNo ? savedItem : row)
+        persistInventoryRows(sectionId, stockMonth, nextRows)
+        setRows(nextRows)
+      }
+      const nextForm = { ...itemForm, beginning, deliveries: formDeliveries, daily, stockCardEntries: updated.stockCardEntries, ending: totals.ending, monthly: totals.monthly, weekly: totals.weekly }
+      try { window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ open: true, editingNo, itemForm: nextForm })) } catch { /* Keep the edited form available for this session. */ }
+      setItemForm(nextForm)
+    }
     registerStockCardReturnUpdater(updateDraft)
     return () => registerStockCardReturnUpdater(null)
-  }, [registerStockCardReturnUpdater])
+  }, [registerStockCardReturnUpdater, itemForm, editingNo, rows, stockMonth, weeklyRanges, sectionId])
   const [dropdownOptions] = useState(getRegularDropdownOptions)
   const visibleRows = rows
     .filter((item) => item.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
@@ -136,6 +158,8 @@ export default function DonationInventory({ stockMonth, onStockMonthChange, mont
   function deleteItem() {
     const itemName = rows.find((item) => item.no === editingNo)?.name
     if (!window.confirm(`Delete ${itemName || 'this donation item'} from the sample list?`)) return
+    const itemToDelete = rows.find((item) => item.no === editingNo)
+    if (itemToDelete) deleteInventoryItem(sectionId, itemToDelete)
     setRows((current) => current.filter((item) => item.no !== editingNo))
     setItemFormOpen(false)
     setEditingNo(null)

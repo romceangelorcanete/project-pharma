@@ -198,13 +198,19 @@ export default function AdminDashboard({
     getSavedStockCardReturnSection,
   );
   const stockCardReturnUpdater = useRef(null);
+  const stockCardActions = useRef(null);
+  const [pendingStockCardSection, setPendingStockCardSection] = useState(null);
+  const [showStockCardSavePrompt, setShowStockCardSavePrompt] = useState(false);
   const registerStockCardReturnUpdater = useCallback((updater) => {
     stockCardReturnUpdater.current = updater;
   }, []);
+  const registerStockCardActions = useCallback((actions) => {
+    stockCardActions.current = actions;
+  }, []);
   const [stockMonth, setStockMonth] = useState(getSavedStockMonth);
   const [clockNow, setClockNow] = useState(() => new Date());
-  const preparedByName = user?.fullName || user?.username || '';
-  const preparedByPosition = (user?.positionTitle || '').toLocaleUpperCase();
+  const preparedByName = user?.fullName || user?.username || "";
+  const preparedByPosition = (user?.positionTitle || "").toLocaleUpperCase();
   const [stockYear, stockMonthNumber] = stockMonth.split("-").map(Number);
   const stockMonthLabel = new Date(
     stockYear,
@@ -216,7 +222,10 @@ export default function AdminDashboard({
   function scheduleSidebarAutoCollapse() {
     window.clearTimeout(sidebarIdleTimer.current);
     if (window.innerWidth <= 760) return;
-    sidebarIdleTimer.current = window.setTimeout(() => setSidebarOpen(false), 3000);
+    sidebarIdleTimer.current = window.setTimeout(
+      () => setSidebarOpen(false),
+      3000,
+    );
   }
 
   function handleSidebarPointerActivity() {
@@ -231,11 +240,35 @@ export default function AdminDashboard({
     return () => window.clearTimeout(sidebarIdleTimer.current);
   }, [sidebarOpen]);
 
-  function navigateToSection(section) {
+  function navigateImmediately(section) {
     setActiveSection(section);
     const route = section === "overview" ? "/dashboard" : `/${section}`;
     window.history.pushState({ section }, "", route);
     if (window.innerWidth <= 760) setSidebarOpen(false);
+  }
+
+  function navigateToSection(section) {
+    if (section === activeSection) return;
+    if (activeSection === "stock-cards" && stockCardActions.current?.isDirty) {
+      setPendingStockCardSection(section);
+      setShowStockCardSavePrompt(true);
+      return;
+    }
+    navigateImmediately(section);
+  }
+
+  function answerStockCardSavePrompt(saveChanges) {
+    const actions = stockCardActions.current;
+    if (saveChanges) {
+      const updatedItem = actions?.getUpdatedItem();
+      if (updatedItem) stockCardReturnUpdater.current?.(updatedItem);
+    }
+    actions?.clearDraft();
+    stockCardActions.current = null;
+    setShowStockCardSavePrompt(false);
+    const section = pendingStockCardSection;
+    setPendingStockCardSection(null);
+    if (section) navigateImmediately(section);
   }
 
   function openStockCard(
@@ -246,7 +279,8 @@ export default function AdminDashboard({
   ) {
     setSelectedStockCard(item || sampleRegularRows[0]);
     setStockCardReturnSection(returnSection);
-    stockCardReturnUpdater.current = updateDraft;
+    stockCardReturnUpdater.current =
+      stockCardReturnUpdater.current || updateDraft;
     setStockMonth(month);
     navigateToSection("stock-cards");
   }
@@ -704,10 +738,12 @@ export default function AdminDashboard({
             preparedByPosition={preparedByPosition}
             stockMonth={stockMonth}
             returnSection={stockCardReturnSection}
+            registerStockCardActions={registerStockCardActions}
             backLabel={`Back to ${stockCardReturnSection === "mhmap" ? "MHMAP" : stockCardReturnSection === "donation" ? "Donation" : "Regular"} inventory`}
             onBack={(updatedItem) => {
               stockCardReturnUpdater.current?.(updatedItem);
-              navigateToSection(stockCardReturnSection);
+              stockCardActions.current = null;
+              navigateImmediately(stockCardReturnSection);
             }}
           />
         )}
@@ -800,6 +836,37 @@ export default function AdminDashboard({
             stockMonth={stockMonth}
             onStockMonthChange={setStockMonth}
           />
+        )}
+        {showStockCardSavePrompt && (
+          <div className="stock-card-save-backdrop">
+            <section
+              className="stock-card-save-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="stock-card-save-title"
+            >
+              <span className="ledger-kicker">STOCK CARD</span>
+              <h2 id="stock-card-save-title">Save changes?</h2>
+              <p>
+                You have made changes to the Stock Card. Do you want to save
+                these changes?
+              </p>
+              <div className="stock-card-save-actions">
+                <button
+                  type="button"
+                  onClick={() => answerStockCardSavePrompt(false)}
+                >
+                  No, discard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => answerStockCardSavePrompt(true)}
+                >
+                  Yes, save changes
+                </button>
+              </div>
+            </section>
+          </div>
         )}
       </section>
     </main>

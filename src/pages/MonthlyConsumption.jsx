@@ -3,7 +3,7 @@ import ExportEstockButton from '../components/ExportEstockButton.jsx'
 import { sampleRegularRows } from './RegularInventory.jsx'
 import { sampleDonationRows } from './DonationInventory.jsx'
 import { sampleMhmapRows } from './MhmapInventory.jsx'
-import useInventoryRows from '../hooks/useInventoryRows.js'
+import useInventoryRows, { useInventoryYearRows } from '../hooks/useInventoryRows.js'
 import './MonthlyConsumption.css'
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -30,11 +30,18 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
   const [yearPickerOpen, setYearPickerOpen] = useState(false)
   const yearPickerRef = useRef(null)
   const selectedYearRef = useRef(null)
+  const [year, monthNumber] = stockMonth.split('-').map(Number)
+  const regularRowsByMonth = useInventoryYearRows('regular', sampleRegularRows, year)
+  const donationRowsByMonth = useInventoryYearRows('donation', sampleDonationRows, year)
+  const mhmapRowsByMonth = useInventoryYearRows('mhmap', sampleMhmapRows, year)
   const [regularRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const [donationRows] = useInventoryRows('donation', sampleDonationRows, stockMonth)
   const [mhmapRows] = useInventoryRows('mhmap', sampleMhmapRows, stockMonth)
-  const sectionRows = useMemo(() => ({ regular: regularRows, donation: donationRows, mhmap: mhmapRows }), [regularRows, donationRows, mhmapRows])
-  const [year, monthNumber] = stockMonth.split('-').map(Number)
+  const sectionRows = useMemo(() => ({
+    regular: combineYearRows(regularRowsByMonth),
+    donation: combineYearRows(donationRowsByMonth),
+    mhmap: combineYearRows(mhmapRowsByMonth),
+  }), [regularRowsByMonth, donationRowsByMonth, mhmapRowsByMonth])
   const firstYear = Math.min(2026, year)
   const lastYear = Math.max(2100, year)
   const yearOptions = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => firstYear + index)
@@ -87,7 +94,7 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
               </div>}
             </div>
             <label className="monthly-consumption-search"><SearchIcon /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Items" aria-label="Search Items" /></label>
-            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} preparedBy={preparedBy} preparedByPosition={preparedByPosition} />
+            <ExportEstockButton activeSheet="monthly" stockMonth={stockMonth} consumptionYear={year} regularRows={regularRows} donationRows={donationRows} mhmapRows={mhmapRows} monthlyConsumptionRows={sectionRows} preparedBy={preparedBy} preparedByPosition={preparedByPosition} />
           </div>
         </div>
 
@@ -95,9 +102,8 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
           <table className="monthly-consumption-table">
             <thead><tr><th className="monthly-consumption-number">#</th><th className="monthly-consumption-item">ITEMS</th>{monthNames.map((month) => <th key={month}>{month.slice(0, 3).toUpperCase()}</th>)}<th>DPRI<br />HIGHEST</th><th>TOTAL<br />PRICE</th><th>TOTAL<br />CONSUMPTION</th><th>AVERAGE MONTHLY<br />CONSUMPTION</th></tr></thead>
             <tbody>{visibleRows.map((item) => {
-              const consumption = Number(item.monthly) || 0
               const dpri = numericPrice(item.dpri)
-              const monthlyValues = monthNames.map((_, index) => index === monthNumber - 1 ? consumption : 0)
+              const monthlyValues = item.monthlyByMonth
               const totalConsumption = monthlyValues.reduce((total, value) => total + value, 0)
               const averageConsumption = Math.round(totalConsumption / section.averageMonths)
               return <tr key={item.no}><td>{item.no}</td><td className="monthly-consumption-item-name">{item.name}</td>{monthlyValues.map((value, index) => <td key={monthNames[index]}>{value || ''}</td>)}<td>{dpri ? pesoFormatter.format(dpri) : ''}</td><td>{pesoFormatter.format(totalConsumption * dpri)}</td><td>{totalConsumption}</td><td>{averageConsumption}</td></tr>
@@ -109,6 +115,20 @@ export default function MonthlyConsumption({ stockMonth, onStockMonthChange, pre
       </section>
     </div>
   )
+}
+
+function combineYearRows(rowsByMonth) {
+  const itemsById = new Map()
+  rowsByMonth.forEach((rows, monthIndex) => {
+    rows.forEach((item) => {
+      const id = String(item.no ?? item.id ?? item.name)
+      const current = itemsById.get(id) || { ...item, monthlyByMonth: Array(12).fill(0) }
+      current.monthlyByMonth[monthIndex] = Number(item.monthly) || 0
+      if (item.dpri) current.dpri = item.dpri
+      itemsById.set(id, current)
+    })
+  })
+  return [...itemsById.values()]
 }
 
 function SearchIcon() {

@@ -3,7 +3,7 @@ import { createEstockWorkbook } from '../utils/xlsxTemplateExport.js'
 import { preloadEstockTemplate } from '../utils/xlsxTemplateExport.js'
 import { readInventoryRows } from '../hooks/useInventoryRows.js'
 
-export default function ExportEstockButton({ rows, regularRows, donationRows, mhmapRows, preparedBy = '', preparedByPosition = '', activeSheet = 'regular', stockMonth = '2026-11', consumptionYear = 2026 }) {
+export default function ExportEstockButton({ rows, regularRows, donationRows, mhmapRows, monthlyConsumptionRows, preparedBy = '', preparedByPosition = '', activeSheet = 'regular', stockMonth = '2026-11', consumptionYear = 2026 }) {
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
@@ -32,6 +32,7 @@ export default function ExportEstockButton({ rows, regularRows, donationRows, mh
         preparedByPosition,
         stockMonth,
         consumptionYear,
+        monthlyConsumptionRows,
       }
       const workbook = await createEstockWorkbook(workbookRows)
       const url = URL.createObjectURL(workbook)

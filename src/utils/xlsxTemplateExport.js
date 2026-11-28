@@ -497,6 +497,7 @@ function monthlyCellValues(item, rowNumber, stockMonth, averageMonths = 12, cons
   for (let monthNumber = 1; monthNumber <= 12; monthNumber += 1) {
     const column = excelColumn(monthNumber + 2)
     if (!hasYearData) values[column] = ''
+    else if (Array.isArray(item.monthlyByMonth)) values[column] = item.monthlyByMonth[monthNumber - 1] || ''
     else if (monthNumber === month) values[column] = consumption
   }
   return Object.entries(values).map(([column, value]) => [`${column}${rowNumber}`, value])
@@ -567,7 +568,7 @@ async function writeZip(entries) {
   return new Blob(chunks, { type: XLSX_MIME })
 }
 
-export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], preparedBy = '', preparedByPosition = '', stockMonth = '2026-11', consumptionYear = 2026 } = {}) {
+export async function createEstockWorkbook({ regularRows = [], donationRows = [], mhmapRows = [], monthlyConsumptionRows, preparedBy = '', preparedByPosition = '', stockMonth = '2026-11', consumptionYear = 2026 } = {}) {
   const entries = await getTemplateEntries()
   const calcChainIndex = entries.findIndex((candidate) => candidate.name === 'xl/calcChain.xml')
   if (calcChainIndex >= 0) entries.splice(calcChainIndex, 1)
@@ -618,9 +619,9 @@ export async function createEstockWorkbook({ regularRows = [], donationRows = []
     {
       file: 'xl/worksheets/sheet4.xml',
       groups: [
-        { rows: regularRows, startRow: 4, endRow: 475, averageMonths: 9 },
-        { rows: donationRows, startRow: 478, endRow: 586, averageMonths: 8 },
-        { rows: mhmapRows, startRow: 589, endRow: 1087, averageMonths: 8 },
+        { rows: monthlyConsumptionRows?.regular || regularRows, startRow: 4, endRow: 475, averageMonths: 9 },
+        { rows: monthlyConsumptionRows?.donation || donationRows, startRow: 478, endRow: 586, averageMonths: 8 },
+        { rows: monthlyConsumptionRows?.mhmap || mhmapRows, startRow: 589, endRow: 1087, averageMonths: 8 },
       ],
       map: (item, row) => monthlyCellValues(item, row, stockMonth),
     },

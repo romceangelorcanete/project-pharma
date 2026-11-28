@@ -15,17 +15,29 @@ function displayDate(value) {
   return `${Number(month)}/${Number(day)}/${year}`
 }
 
-function todayISO() {
+function isDateInStockMonth(value, stockMonth) {
+  const iso = toISODate(value)
+  return iso ? iso.slice(0, 7) === stockMonth : false
+}
+
+function todayISO(stockMonth, useSelectedMonth = false) {
   const today = new Date()
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const [selectedYear, selectedMonth] = stockMonth.split('-').map(Number)
+  const year = useSelectedMonth ? selectedYear : today.getFullYear()
+  const month = useSelectedMonth ? selectedMonth : today.getMonth() + 1
+  const day = Math.min(today.getDate(), new Date(year, month, 0).getDate())
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 function getInitialRows(item, stockMonth) {
   const [year, month] = stockMonth.split('-').map(Number)
   const rows = item.stockCardEntries?.length
-    ? item.stockCardEntries.map((row) => ({ ...row, date: toISODate(row.date) }))
+    ? item.stockCardEntries
+      .filter((row) => isDateInStockMonth(row.date, stockMonth))
+      .map((row) => ({ ...row, date: toISODate(row.date) }))
+      .sort((left, right) => left.date.localeCompare(right.date))
     : [
-      ...(item.deliveries || []).map((delivery) => ({ date: toISODate(delivery.date), reference: delivery.vendor || '', receipt: Number(delivery.qty) || 0, issue: 0, office: '', days: '' })),
+      ...(item.deliveries || []).filter((delivery) => isDateInStockMonth(delivery.date, stockMonth)).map((delivery) => ({ date: toISODate(delivery.date), reference: delivery.vendor || '', receipt: Number(delivery.qty) || 0, issue: 0, office: '', days: '' })),
       ...Object.entries(item.daily || {}).filter(([day, qty]) => day !== 'return' && Number(qty) > 0).map(([day, qty]) => ({ date: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`, reference: '', receipt: 0, issue: Number(qty) || 0, office: '', days: '' })),
     ].sort((left, right) => left.date.localeCompare(right.date))
 
@@ -36,8 +48,9 @@ function hasEntry(row) {
   return Boolean(row.reference || row.office || row.days || row.receipt !== '' && Number(row.receipt) !== 0 || row.issue !== '' && Number(row.issue) !== 0)
 }
 
-export default function StockCardView({ item, stockMonth, returnSection, onBack, backLabel = 'Back to inventory', preparedBy = '', preparedByPosition = '' }) {
+export default function StockCardView({ item, stockMonth, returnSection, onBack, registerStockCardActions, backLabel = 'Back to inventory', preparedBy = '', preparedByPosition = '' }) {
   const [year, month] = stockMonth.split('-').map(Number)
+  const useSelectedMonth = ['regular', 'donation', 'mhmap'].includes(returnSection)
   const draftStorageKey = `pharma-stock-card-draft:${returnSection}:${item.no}:${stockMonth}`
   const [savedCardDraft] = useState(() => {
     try {
@@ -47,6 +60,7 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
   })
   const [rows, setRows] = useState(() => savedCardDraft?.rows || getInitialRows(item, stockMonth))
   const [beginningBalance, setBeginningBalance] = useState(() => Number(savedCardDraft?.beginningBalance ?? item.beginning) || 0)
+  const [isDirty, setIsDirty] = useState(() => Boolean(savedCardDraft?.isDirty))
   const sheetRows = useMemo(() => rows.reduce((result, row) => {
     const hasTransaction = hasEntry(row)
     const previousBalance = result.balance
@@ -59,24 +73,15 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
 
   useEffect(() => {
     try {
-      window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ itemName: item.name, rows, beginningBalance }))
+      if (isDirty) window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ itemName: item.name, rows, beginningBalance, isDirty }))
+      else window.sessionStorage.removeItem(draftStorageKey)
     } catch { /* Keep the stock card usable when browser storage is unavailable. */ }
-  }, [draftStorageKey, item.name, rows, beginningBalance])
+  }, [draftStorageKey, item.name, rows, beginningBalance, isDirty])
 
-  function updateCell(index, key, value) {
-    setRows((current) => {
-      const next = current.map((row, rowIndex) => rowIndex === index ? {
-        ...row,
-        date: row.date || value !== '' ? row.date || todayISO() : '',
-        [key]: value,
-      } : row)
-      if (index === next.length - 1 && hasEntry(next[index])) next.push({ date: '', reference: '', receipt: '', issue: '', office: '', days: '' })
-      return next
-    })
-  }
-
-  function returnToInventory() {
-    const entries = rows.filter((row) => hasEntry(row)).map((row) => ({ ...row, date: row.date || todayISO() }))
+  function getUpdatedItem() {
+    const entries = rows.filter((row) => hasEntry(row))
+      .map((row) => ({ ...row, date: row.date || todayISO(stockMonth, useSelectedMonth) }))
+      .sort((left, right) => toISODate(left.date).localeCompare(toISODate(right.date)))
     const deliveries = entries.filter((row) => Number(row.receipt) > 0 || row.reference && Number(row.issue) === 0).map((row) => ({ date: row.date, qty: Number(row.receipt) || 0, vendor: row.reference || '' }))
     const daily = entries.reduce((result, row) => {
       if (Number(row.issue) > 0) {
@@ -85,8 +90,37 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
       }
       return result
     }, {})
-    try { window.sessionStorage.removeItem(draftStorageKey) } catch { /* Ignore unavailable browser storage. */ }
-    onBack({ ...item, beginning: beginningBalance, deliveries, daily, stockCardEntries: entries })
+    return { ...item, beginning: beginningBalance, deliveries, daily, stockCardEntries: entries }
+  }
+
+  function clearDraft() {
+    try { window.sessionStorage.removeItem(draftStorageKey) } catch { /* Ignore unavailable storage. */ }
+    setIsDirty(false)
+  }
+
+  useEffect(() => {
+    if (!registerStockCardActions) return undefined
+    registerStockCardActions({ isDirty, getUpdatedItem, clearDraft })
+    return () => registerStockCardActions(null)
+  }, [registerStockCardActions, isDirty, rows, beginningBalance])
+
+  function updateCell(index, key, value) {
+    setIsDirty(true)
+    setRows((current) => {
+      const next = current.map((row, rowIndex) => rowIndex === index ? {
+        ...row,
+        date: row.date || value !== '' ? row.date || todayISO(stockMonth, useSelectedMonth) : '',
+        [key]: value,
+      } : row)
+      if (index === next.length - 1 && hasEntry(next[index])) next.push({ date: '', reference: '', receipt: '', issue: '', office: '', days: '' })
+      return next
+    })
+  }
+
+  function returnToInventory() {
+    const updatedItem = getUpdatedItem()
+    clearDraft()
+    onBack(updatedItem)
   }
 
   return (
@@ -109,7 +143,7 @@ export default function StockCardView({ item, stockMonth, returnSection, onBack,
               <tr><th>Qty.</th><th>Qty.</th><th>Office</th><th>Qty.</th></tr>
             </thead>
             <tbody>
-              <tr className="stock-card-opening-row"><td></td><td>Beginning balance</td><td></td><td></td><td></td><td><input aria-label="Beginning balance" type="number" min="0" value={beginningBalance} onChange={(event) => setBeginningBalance(Number(event.target.value) || 0)} /></td><td></td></tr>
+              <tr className="stock-card-opening-row"><td></td><td>Beginning balance</td><td></td><td></td><td></td><td><input aria-label="Beginning balance" type="number" min="0" value={beginningBalance} onChange={(event) => { setBeginningBalance(Number(event.target.value) || 0); setIsDirty(true) }} /></td><td></td></tr>
               {sheetRows.map((row, index) => <tr key={index}>
                 <td>{displayDate(row.date)}</td>
                 <td><input aria-label={`Row ${index + 1} reference`} value={row.reference ?? ''} onChange={(event) => updateCell(index, 'reference', event.target.value)} /></td>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import MonthYearPicker from '../components/MonthYearPicker.jsx'
 import MonthlyStockCard from '../components/MonthlyStockCard.jsx'
 import ExportEstockButton from '../components/ExportEstockButton.jsx'
-import useInventoryRows from '../hooks/useInventoryRows.js'
+import useInventoryRows, { deleteInventoryItem, persistInventoryRows } from '../hooks/useInventoryRows.js'
 import { calculateInventoryTotals } from '../utils/inventoryCalculations.js'
 import { reconcileStockCardEntries } from '../utils/stockCardEntries.js'
 import { getRegularDropdownOptions } from './regularDropdownOptions.js'
@@ -46,6 +46,12 @@ function toExpiryStockValue(value = '') {
     : `${Number(match[2])}/${Number(match[3])}/${match[1]}`
 }
 
+function regularProductKey(item) {
+  return [item.name, item.unit, item.expiry, item.lot]
+    .map((value) => String(value ?? '').trim().toLocaleLowerCase())
+    .join('|')
+}
+
 export default function RegularInventory({ stockMonth, onStockMonthChange, onOpenStockCard, registerStockCardReturnUpdater, preparedBy, preparedByPosition }) {
   const [rows, setRows] = useInventoryRows('regular', sampleRegularRows, stockMonth)
   const draftStorageKey = `pharma-inventory-form-draft:regular:${stockMonth}`
@@ -69,10 +75,35 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
   }, [draftStorageKey, addItemOpen, editingItemNo, itemForm])
   useEffect(() => {
     if (!registerStockCardReturnUpdater) return undefined
-    const updateDraft = (updated) => setItemForm((current) => ({ ...current, beginning: updated.beginning, deliveries: updated.deliveries.map((delivery) => ({ date: toDateInput(delivery.date), qty: delivery.qty, vendor: delivery.vendor })), daily: updated.daily, stockCardEntries: updated.stockCardEntries }))
+    const updateDraft = (updated) => {
+      const beginning = Number(updated.beginning) || 0
+      const formDeliveries = updated.deliveries.map((delivery) => ({ date: toDateInput(delivery.date), qty: Number(delivery.qty) || 0, vendor: delivery.vendor || '' }))
+      const deliveries = formDeliveries.map((delivery) => ({ ...delivery, date: toStockCardDate(delivery.date) }))
+      const daily = Object.fromEntries(Object.entries(updated.daily || {}).map(([day, qty]) => [day, Number(qty) || 0]))
+      const totals = calculateInventoryTotals({ ...itemForm, beginning, deliveries: formDeliveries, daily }, weeklyRanges)
+      const savedItem = {
+        no: editingItemNo ?? Math.max(0, ...rows.map((row) => Number(row.no) || 0)) + 1,
+        name: itemForm.name.trim(), unit: itemForm.unit.trim(),
+        price: itemForm.price ? `₱${Number(itemForm.price).toFixed(2)}` : '',
+        dpri: itemForm.dpri ? `₱${Number(itemForm.dpri).toFixed(2)}` : '',
+        category: itemForm.category.trim(), other: itemForm.other.trim(),
+        expiry: itemForm.expiryDates.map((expiry) => toExpiryStockValue(expiry.trim())).filter(Boolean).join('\n'),
+        lot: itemForm.lotNumbers.map((lot) => lot.trim()).filter(Boolean).join('\n'),
+        beginning, deliveries, daily, stockCardEntries: updated.stockCardEntries,
+        ending: totals.ending, monthly: totals.monthly, weekly: totals.weekly,
+      }
+      if (savedItem.name && editingItemNo !== null) {
+        const nextRows = editingItemNo === null ? [...rows, savedItem] : rows.map((row) => row.no === editingItemNo ? savedItem : row)
+        persistInventoryRows('regular', stockMonth, nextRows)
+        setRows(nextRows)
+      }
+      const nextForm = { ...itemForm, beginning, deliveries: formDeliveries, daily, stockCardEntries: updated.stockCardEntries, ending: totals.ending, monthly: totals.monthly, weekly: totals.weekly }
+      try { window.sessionStorage.setItem(draftStorageKey, JSON.stringify({ open: true, editingNo: editingItemNo, itemForm: nextForm })) } catch { /* Keep the edited form available for this session. */ }
+      setItemForm(nextForm)
+    }
     registerStockCardReturnUpdater(updateDraft)
     return () => registerStockCardReturnUpdater(null)
-  }, [registerStockCardReturnUpdater])
+  }, [registerStockCardReturnUpdater, itemForm, editingItemNo, rows, stockMonth, weeklyRanges])
   const [year, monthNumber] = stockMonth.split('-').map(Number)
   const monthLabel = new Date(year, monthNumber - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const visibleRows = rows
@@ -143,6 +174,17 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
 
   function addSampleItem(event) {
     event.preventDefault()
+    const candidateKey = regularProductKey({
+      name: itemForm.name.trim(),
+      unit: itemForm.unit.trim(),
+      expiry: itemForm.expiryDates.map((expiry) => toExpiryStockValue(expiry.trim())).filter(Boolean).join('\n'),
+      lot: itemForm.lotNumbers.map((lot) => lot.trim()).filter(Boolean).join('\n'),
+    })
+    const duplicate = rows.find((item) => item.no !== editingItemNo && regularProductKey(item) === candidateKey)
+    if (duplicate) {
+      window.alert(`${itemForm.name.trim()} already exists in the item list. Edit the existing item instead.`)
+      return
+    }
     const beginning = Number(itemForm.beginning) || 0
     const deliveries = itemForm.deliveries
       .filter((delivery) => (delivery.qty !== '' && delivery.qty != null) || delivery.vendor.trim())
@@ -183,6 +225,8 @@ export default function RegularInventory({ stockMonth, onStockMonthChange, onOpe
   function deleteSampleItem() {
     const itemName = rows.find((item) => item.no === editingItemNo)?.name
     if (!window.confirm(`Delete ${itemName || 'this item'} from the sample list?`)) return
+    const itemToDelete = rows.find((item) => item.no === editingItemNo)
+    if (itemToDelete) deleteInventoryItem('regular', itemToDelete)
     setRows((current) => current.filter((item) => item.no !== editingItemNo))
     setAddItemOpen(false)
     setEditingItemNo(null)
